@@ -23,32 +23,10 @@
   }
   exports.height = getHeight;
 
-  function draw(canvas, content) {
-    console.log(content);
-
-    var ctx = canvas.getContext('2d');
-        //mainPhoto = content['mainPhoto'];
-
-    ctx.fillStyle = 'rgb(150, 56, 37)';
-    ctx.fillRect(0, 0, width, height);
-
-    if (content['commonName']) {
-      ctx.font = '24px Open Sans';
-      ctx.fillStyle = '#FFFFFF';
-      ctx.fillText(content['commonName'], 15, 25);
-    }
-
-    if (content['sciName']) {
-      ctx.font = 'italic 20px Open Sans';
-      ctx.fillText(content['sciName'], 15, 50);
-    }
-
-    if (content['mainPhoto']) {
-      var mainPhoto = content['mainPhoto'];
-      ctx.drawImage(mainPhoto['image'], mainPhoto['sx'], mainPhoto['sy'], mainPhoto['sWidth'], heightWidthRatio * mainPhoto['sWidth'], 0, imgStartY, width, imgHeight);
-    }
+  function imageFieldNames() {
+    return ["mainPhoto"];
   }
-  exports.draw = draw;
+  exports.imageFieldNames = imageFieldNames;
 
   function getMoveable() {
     return [
@@ -86,4 +64,31 @@
     ]
   }
   exports.getFields = getFields;
+
+  function draw(canvas, content) {
+    console.log(content);
+
+    var ctx = canvas.getContext('2d');
+        //mainPhoto = content['mainPhoto'];
+
+    ctx.fillStyle = 'rgb(150, 56, 37)';
+    ctx.fillRect(0, 0, width, height);
+
+    if (content['commonName']) {
+      ctx.font = '24px "Open Sans"';
+      ctx.fillStyle = '#FFFFFF';
+      ctx.fillText(content['commonName'], 15, 25);
+    }
+
+    if (content['sciName']) {
+      ctx.font = 'italic 20px "Open Sans"';
+      ctx.fillText(content['sciName'], 15, 50);
+    }
+
+    if (content['mainPhoto']) {
+      var mainPhoto = content['mainPhoto'];
+      ctx.drawImage(mainPhoto['image'], mainPhoto['sx'], mainPhoto['sy'], mainPhoto['sWidth'], heightWidthRatio * mainPhoto['sWidth'], 0, imgStartY, width, imgHeight);
+    }
+  }
+  exports.draw = draw;
 })();
