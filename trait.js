@@ -60,6 +60,11 @@
         'id': 'mainPhoto',
         'label': 'Main photo',
         'type': 'image'
+      },
+      {
+        'id': 'backgroundColor',
+        'label': 'Background color',
+        'type': 'color'
       }
     ]
   }
@@ -71,8 +76,11 @@
     var ctx = canvas.getContext('2d');
         //mainPhoto = content['mainPhoto'];
 
-    ctx.fillStyle = 'rgb(150, 56, 37)';
-    ctx.fillRect(0, 0, width, height);
+    if (content['backgroundColor']) {
+      console.log('here');
+      ctx.fillStyle = content['backgroundColor'];
+      ctx.fillRect(0, 0, width, height);
+    }
 
     if (content['commonName']) {
       ctx.font = '24px "Open Sans"';
