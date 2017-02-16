@@ -8,11 +8,12 @@
   }
 
   var templateData = null;
-  var reader = null;
+  var templateSupplier = null;
   var canvasSupplier = null;
+  var canvas = null;
 
-  exports.setTemplateReader = function(templateReader) {
-    reader = templateReader;
+  exports.setTemplateSupplier = function(supplier) {
+    templateSupplier = supplier;
   }
 
   exports.setCanvasSupplier = function(supplier) {
@@ -20,7 +21,9 @@
   }
 
   exports.loadTemplate = function loadTemplate(name, cb) {
-    reader.read(name, (err, data) => {
+    canvas = null;
+
+    templateSupplier.supply(name, (err, data) => {
       if (err) return cb(err);
 
       templateData = data;
@@ -49,8 +52,22 @@
   }
   exports.fields = fields;
 
+  function getCanvas() {
+    if (canvas) {
+      return canvas;
+    }
+
+    if (templateData === null) {
+      return null;
+    }
+
+    canvas = canvasSupplier.supply(templateData['width'], templateData['height']);
+    return canvas;
+  }
+  exports.getCanvas = getCanvas;
+
   exports.draw = function draw(content) {
-    var canvas = canvasSupplier.supply(templateData['width'], templateData['height'])
+    var canvas = getCanvas()
       , ctx = canvas.getContext('2d')
       , fields = templateData['fields']
       , field = null
