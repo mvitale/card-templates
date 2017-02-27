@@ -2,7 +2,7 @@
   var exports = {};
 
   if (typeof module === "undefined") {
-    window.TemplateManager = exports;
+    window.TemplateRenderer = exports;
   } else {
     module.exports = exports;
   }
