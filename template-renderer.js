@@ -39,7 +39,7 @@
 
   function fields() {
     var ret = []
-      , fieldIds = templateData.fieldIds
+      , fieldIds = Object.keys(templateData.fields)
       , fields = templateData.fields
       , fieldId = null
       , field = null;
