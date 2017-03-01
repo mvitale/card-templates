@@ -38,17 +38,20 @@
   }
 
   function fields() {
-    // Make a defensive copy
-    var copy = []
-      , fields = templateData["fields"]
-      , curField = null;
+    var ret = []
+      , fieldIds = templateData.fieldIds
+      , fields = templateData.fields
+      , fieldId = null
+      , field = null;
 
-    for (var i = 0; i < fields.length; i++) {
-      curField = fields[i];
-      copy.push(Object.assign({}, curField));
+    for (var i = 0; i < fieldIds.length; i++) {
+      fieldId = fieldIds[i];
+      field = fields[fieldId];
+
+      ret.push(Object.assign({}, { id: fieldId }, field));
     }
 
-    return copy;
+    return ret;
   }
   exports.fields = fields;
 
@@ -66,10 +69,10 @@
   }
   exports.getCanvas = getCanvas;
 
-  exports.draw = function draw(content) {
+  function draw(content) {
     var canvas = getCanvas()
       , ctx = canvas.getContext('2d')
-      , fields = templateData['fields']
+      , fields = exports.fields() // TODO: Why is prefacing with exports necessary??
       , field = null
       , fieldData = null;
 
@@ -96,6 +99,7 @@
 
     return canvas;
   }
+  exports.draw = draw;
 
   function drawColor(ctx, field, data) {
     ctx.fillStyle = data;
@@ -112,15 +116,15 @@
     var heightWidthRatio = (field['height'] * 1.0) / field['width'];
 
     ctx.drawImage(
-      data['image'],
-      data['sx'],
-      data['sy'],
-      data['sWidth'],
-      heightWidthRatio * data['sWidth'],
-      field['x'],
-      field['y'],
-      field['width'],
-      field['height']
+      data.image,
+      data.sx,
+      data.sy,
+      data.sWidth,
+      heightWidthRatio * data.sWidth,
+      field.x,
+      field.y,
+      field.width,
+      field.height
     );
   }
 })();
