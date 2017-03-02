@@ -115,6 +115,10 @@
   function drawImage(ctx, field, data) {
     var heightWidthRatio = (field['height'] * 1.0) / field['width'];
 
+    console.log(data.image.naturalWidth);
+    console.log('x');
+    console.log(data.image.naturalHeight);
+
     ctx.drawImage(
       data.image,
       data.sx,
