@@ -114,6 +114,7 @@
 
   function drawImage(ctx, field, data) {
     var targetRatio = (field.width * 1.0) / field.height
+      , heightWidthRatio = (field.height * 1.0) / field.width
       , imageHeight = typeof(data.image.naturalHeight) === "undefined" ? data.image.height : data.image.naturalHeight
       , imageWidth = typeof(data.image.naturalWidth) === "undefined" ? data.image.width : data.image.naturalWidth
       , imageRatio = (imageWidth * 1.0) / imageHeight
@@ -130,7 +131,7 @@
       sx = data.sx;
       sy = data.sy;
       sWidth = data.sWidth;
-      sHeight = sWidth / targetRatio;
+      sHeight = sWidth * heightWidthRatio;
 
       console.log(sWidth);
       console.log(sHeight);
