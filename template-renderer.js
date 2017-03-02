@@ -113,18 +113,49 @@
   }
 
   function drawImage(ctx, field, data) {
-    var heightWidthRatio = (field['height'] * 1.0) / field['width'];
+    var targetRatio = (field.width * 1.0) / field.height
+      , imageHeight = typeof(data.image.naturalHeight) === "undefined" ? data.image.height : data.image.naturalHeight
+      , imageWidth = typeof(data.image.naturalWidth) === "undefined" ? data.image.width : data.image.naturalWidth
+      , imageRatio = (imageWidth * 1.0) / imageHeight
+      , sx = 0
+      , sy = 0
+      , sWidth = 0
+      , sHeight = 0
+      , gap = 0;
 
-    console.log(data.image.naturalWidth);
-    console.log('x');
-    console.log(data.image.naturalHeight);
+      console.log(data);
+
+    if (data.sx != null && data.sy != null && data.sWidth != null) {
+      console.log('thereee');
+      sx = data.sx;
+      sy = data.sy;
+      sWidth = data.sWidth;
+      sHeight = sWidth / targetRatio;
+
+      console.log(sWidth);
+      console.log(sHeight);
+    } else {
+      if (imageRatio <= targetRatio) {
+        sWidth = imageWidth;
+        sHeight = sWidth / targetRatio;
+
+        gap = field.height - sHeight;
+        sy = gap / 2;
+      } else {
+        sHeight = imageHeight;
+        sWidth = targetRatio * sHeight;
+
+        gap = imageWidth - sWidth;
+        sx = gap / 2;
+      }
+    }
 
     ctx.drawImage(
       data.image,
-      data.sx,
-      data.sy,
-      data.sWidth,
-      heightWidthRatio * data.sWidth,
+      sx,
+      sy,
+      sWidth,
+      sHeight,
       field.x,
       field.y,
       field.width,
