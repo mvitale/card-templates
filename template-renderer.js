@@ -89,59 +89,20 @@
     }
   }
 
-  // Do DFS on defaultSpec and resolve any $choiceIndex-{n} values by replacing
-  // with fieldChoices[n]
-  function resolveDefault(defaultSpec, fieldChoices) {
-    var choiceIndexPrefix = "$choiceIndex-"
-      , choiceIndexStartIndex = choiceIndexPrefix.length
-      , defaultSpecCopy = null
-      , keyStack = null
-      , parentStack = []
-      , curKey = null
-      , curVal = null
-      , parent = null
-      , choiceIndex = null
-      , parentRecord = null
-      , keys = null;
-
-    if (typeof defaultSpec === "string" && defaultSpec.startsWith(choiceIndexPrefix)) {
-      return fieldChoices[parseInt(defaultSpec.substring(choiceIndexStartIndex))];
-    } else if (typeof defaultSpec === "object" && !Array.isArray(defaultSpec)) {
-      defaultSpecCopy = JSON.parse(JSON.stringify(defaultSpec));
-      curVal = defaultSpecCopy
-      keys = Object.keys(defaultSpecCopy);
-      keyStack = keys;
-      parentStack.push({node: defaultSpecCopy, numKeys: keys.length});
-
-      while (keyStack.length > 0) {
-        curKey = keyStack.pop();
-
-        parentRecord = parentStack.pop();
-
-        if (parentRecord.numKeys === 0) {
-          parentRecord = parentStack.pop();
-        }
-
-        parentRecord.numKeys -= 1;
-        parentStack.push(parentRecord);
-
-        parent = parentRecord.node;
-
-        curVal = parent[curKey];
-        if (typeof curVal === "object" && !Array.isArray(curVal)) {
-          keys = Object.keys(curVal);
-          keyStack = keyStack.concat(keys);
-          parentStack.push({node: curVal, numKeys: keys.length})
-        } else if (typeof curVal === "string" && curVal.startsWith(choiceIndexPrefix)) {
-          choiceIndex = parseInt(curVal.substring(choiceIndexStartIndex));
-          parent[curKey] = fieldChoices[choiceIndex];
-        }
-      }
-
-      return defaultSpecCopy;
-    } else {
-      return defaultSpec;
+  function resolveImagesHelper(fieldDataStack, cb) {
+    if (fieldDataStack.length === 0) {
+      return cb();
     }
+
+    resolveImage(fieldDataStack.pop(), function(err, data) {
+      if (err) return cb(err);
+
+      return resolveImagesHelper(fieldDataStack, cb);
+    });
+  }
+
+  function resolveImages(fieldData, cb) {
+    resolveImagesHelper(fieldData.slice(0), cb);
   }
 
   function buildDrawingDataHelper(fields, choices, drawingData, cb) {
@@ -150,27 +111,34 @@
     }
 
     var field = fields.pop()
-      , fieldValue = card.data[field.id]
+      , fieldValue = field.value
+      , dataValue = card.data[field.id]
       , defaultSpec = card.defaultData[field.id]
       , chosenValue = null;
 
     // != null is true for undefined as well (don't use !==)
     if (fieldValue != null) {
-      chosenValue = fieldValue;
+      chosenValue = fieldValue
+    } else if (dataValue != null) {
+      chosenValue = dataValue;
     } else if (defaultSpec != null) {
-      chosenValue = resolveDefault(defaultSpec, choices[field.id]);
-    } else {
-      return cb(new Error("No value or default provided for field " + field.id));
+      chosenValue = defaultSpec.value;
     }
 
     drawingData[field.id] = chosenValue;
 
     if (field.type === "image") {
-      return resolveImage(chosenValue, (err, fieldData) => {
+      return resolveImage(chosenValue, function(err, fieldData) {
         if (err) return cb(err);
 
         return buildDrawingDataHelper(fields, choices, drawingData, cb);
       });
+    } else if (field.type === "multi-image") {
+      return resolveImages(chosenValue, function(err, fieldData) {
+        if (err) return cb(err);
+
+        return buildDrawingDataHelper(fields, choices, drawingData, cb);
+      })
     } else {
       return buildDrawingDataHelper(fields, choices, drawingData, cb);
     }
@@ -196,11 +164,19 @@
           case "color":
             drawColor(ctx, field, fieldData);
             break;
+          case "line":
+            drawLine(ctx, field, fieldData);
           case "text":
             drawText(ctx, field, fieldData);
             break;
+          case "key-val-text":
+            drawKeyValText(ctx, field, fieldData);
+            break;
           case "image":
             drawImage(ctx, field, fieldData);
+            break;
+          case "multi-image":
+            drawMultiImage(ctx, field, fieldData);
             break;
           default:
             // TODO: Handle this case
@@ -214,18 +190,90 @@
 
   function drawColor(ctx, field, data) {
     ctx.fillStyle = data;
-    ctx.fillRect(field['x'], field['y'], field['width'], field['height']);
+    ctx.fillRect(field.x, field.y, field.width, field.height);
+  }
+
+  function drawKeyValText(ctx, field, data) {
+    var keyFont = field.keyFont ? field.keyFont : field.font
+      , valFont = field.valFont ? field.valFont : field.font;
+
+    drawTextHelper(ctx, field.keyFont, field.color, data.key, field.keyX, field.y);
+    drawTextHelper(ctx, field.valFont, field.color, data.val, field.valX, field.y);
   }
 
   function drawText(ctx, field, data) {
-    ctx.font = field['font'];
-    ctx.fillStyle = field['color'];
-    ctx.fillText(data, field['x'], field['y']);
+    drawTextHelper(ctx, field.font, field.color, data, field.x, field.y,
+      field.wrapAt, field.textAlign);
   }
 
-  function drawImage(ctx, field, data) {
+  function drawTextHelper(ctx, font, color, value, x, y, wrapAt, textAlign) {
+    var fontSizeLineHeightMultiplier = 1.12
+      , words = null
+      , width = null
+      , lineX = x
+      , curY = y
+      , curWord = null
+      , curText = null
+      , newLine = false;
+
+    ctx.font = font;
+    ctx.fillStyle = color;
+
+    // TODO: Allow wrapping for text alignments other than default left
+    if (textAlign != null) {
+      x = x - ctx.measureText(value, x, y).width / 2;
+      ctx.fillText(value, x, y);
+    } else if (wrapAt != null) {
+      wordStack = value.split(' ').reverse();
+
+      if (wordStack.length === 0) {
+        return;
+      }
+
+      curWord = wordStack.pop();
+      ctx.fillText(curWord, x, y);
+      lineX += ctx.measureText(curWord, x, y).width;
+
+      while (wordStack.length > 0) {
+        curWord = wordStack.pop();
+        curText = ' ' + curWord;
+        newX = ctx.measureText(curText).width + lineX;
+
+        if (newX <= wrapAt) {
+          ctx.fillText(curText, lineX, curY);
+          lineX = newX;
+        } else {
+          curY += fontSizePx(ctx) * fontSizeLineHeightMultiplier;
+          ctx.fillText(curWord, x, curY);
+          lineX = ctx.measureText(curWord).width + x;
+        }
+      }
+    } else {
+      ctx.fillText(value, x, y);
+    }
+  }
+
+  // Get current font size in pixels from canvas context
+  function fontSizePx(ctx) {
+    var fontArgs = ctx.font.split(' ');
+    return parseFloat(fontArgs[0].replace('px', ''));
+  }
+
+  function drawMultiImage(ctx, field, data) {
+    var specs = field.specs[data.length - 1]
+      , curData = null
+      , curSpec = null;
+
+    for (var i=0; i < data.length; i++) {
+      curData = data[i];
+      curSpec = specs[i];
+
+      drawImageHelper(ctx, curSpec, curData);
+    }
+  }
+
+  function drawImageHelper(ctx, field, data) {
     var targetRatio = (field.width * 1.0) / field.height
-      , heightWidthRatio = (field.height * 1.0) / field.width
       , imageHeight = typeof(data.image.naturalHeight) === "undefined" ?
           data.image.height :
           data.image.naturalHeight
@@ -243,20 +291,20 @@
       sx = data.sx;
       sy = data.sy;
       sWidth = data.sWidth;
-      sHeight = sWidth * heightWidthRatio;
+      sHeight = sWidth * targetRatio;
     } else {
       if (imageRatio <= targetRatio) {
         sWidth = imageWidth;
         sHeight = sWidth / targetRatio;
 
-        gap = field.height - sHeight;
-        sy = gap / 2;
+        gap = imageHeight - sHeight;
+        sy = gap / 2.0;
       } else {
         sHeight = imageHeight;
         sWidth = targetRatio * sHeight;
 
         gap = imageWidth - sWidth;
-        sx = gap / 2;
+        sx = gap / 2.0;
       }
     }
 
@@ -271,5 +319,23 @@
       field.width,
       field.height
     );
+  }
+
+  function drawImage(ctx, field, data) {
+    drawImageHelper(ctx, field, data);
+
+    if (field.credit) {
+      drawText(ctx, field.credit, data.credit);
+    }
+  }
+
+  function drawLine(ctx, field, data) {
+    ctx.strokeStyle = field.color;
+    ctx.lineWidth = field.width;
+
+    ctx.beginPath();
+    ctx.moveTo(field.startX, field.startY);
+    ctx.lineTo(field.endX, field.endY);
+    ctx.stroke();
   }
 })();
