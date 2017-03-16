@@ -112,6 +112,7 @@
 
     var field = fields.pop()
       , fieldValue = field.value
+      , fieldChoices = choices[field.id]
       , dataValue = card.data[field.id]
       , defaultSpec = card.defaultData[field.id]
       , chosenValue = null;
@@ -122,7 +123,19 @@
     } else if (dataValue != null) {
       chosenValue = dataValue;
     } else if (defaultSpec != null) {
-      chosenValue = defaultSpec.value;
+      if (defaultSpec.data != null) {
+        chosenValue = defaultSpec.data;
+      } else if (defaultSpec.choiceIndex != null) {
+        if (typeof defaultSpec.choiceIndex === "number") {
+          chosenValue = fieldChoices[defaultSpec.choiceIndex];
+        } else if (typeof defaultSpec.choiceIndex === "object") { // Assume array of indices
+          chosenValue = [];
+
+          defaultSpec.choiceIndex.forEach(function(index) {
+            chosenValue.push(fieldChoices[index]);
+          });
+        }
+      }
     }
 
     drawingData[field.id] = chosenValue;
