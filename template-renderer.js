@@ -172,34 +172,70 @@
 
       fields.forEach(function(field) {
         fieldData = drawingData[field.id];
-
-        switch(field.type) {
-          case "color":
-            drawColor(ctx, field, fieldData);
-            break;
-          case "line":
-            drawLine(ctx, field, fieldData);
-          case "text":
-            drawText(ctx, field, fieldData);
-            break;
-          case "key-val-text":
-            drawKeyValText(ctx, field, fieldData);
-            break;
-          case "image":
-            drawImage(ctx, field, fieldData);
-            break;
-          case "multi-image":
-            drawMultiImage(ctx, field, fieldData);
-            break;
-          default:
-            // TODO: Handle this case
-        }
+        drawField(ctx, field, fieldData);
       });
 
       return cb(null, canvas);
     });
   }
   exports.draw = draw;
+
+  function drawField(ctx, field, fieldData) {
+    switch(field.type) {
+      case "color":
+        drawColor(ctx, field, fieldData);
+        break;
+      case "line":
+        drawLine(ctx, field, fieldData);
+      case "text":
+        drawText(ctx, field, fieldData);
+        break;
+      case "key-val-text":
+        drawKeyValText(ctx, field, fieldData);
+        break;
+      case "image":
+        drawImage(ctx, field, fieldData);
+        break;
+      case "multi-image":
+        drawMultiImage(ctx, field, fieldData);
+        break;
+      case "var-list":
+        drawVarList(ctx, field, fieldData);
+        break;
+      default:
+        // TODO: Handle this case
+    }
+  }
+
+  function drawVarList(ctx, field, data) {
+    var curData = null
+      , curField = null
+      , yOffset = 0
+      , fields = field.fields
+      , fieldKeys = Object.keys(fields)
+      ;
+
+
+    for (var i = 0; i < data.length; i++) {
+      curData = data[i];
+      yOffset = field.yIncr * i;
+
+      fieldKeys.forEach((fieldKey) => {
+        var curField = Object.assign({}, fields[fieldKey]);
+
+        switch (curField.type) {
+          case "line":
+            curField.startY += field.y + yOffset;
+            curField.endY += field.y + yOffset;
+            break;
+          default:
+            curField.y += field.y + yOffset;
+        }
+
+        drawField(ctx, curField, curData[fieldKey]);
+      });
+    }
+  }
 
   function drawColor(ctx, field, data) {
     ctx.fillStyle = data;
@@ -233,10 +269,18 @@
     ctx.fillStyle = color;
 
     // TODO: Allow wrapping for text alignments other than default left
-    if (textAlign != null) {
-      x = x - ctx.measureText(value, x, y).width / 2;
+    if (wrapAt == null) {
+      if (textAlign != null) {
+        if (textAlign === 'center') {
+          x = x - ctx.measureText(value, x, y).width / 2;
+        } else if (textAlign === 'right') {
+          x = x - ctx.measureText(value, x, y).width;
+        }
+        // left is implicit - nothing to do
+      }
+
       ctx.fillText(value, x, y);
-    } else if (wrapAt != null) {
+    } else {
       wordStack = value.split(' ').reverse();
 
       if (wordStack.length === 0) {
@@ -261,8 +305,6 @@
           lineX = ctx.measureText(curWord).width + x;
         }
       }
-    } else {
-      ctx.fillText(value, x, y);
     }
   }
 
