@@ -67,6 +67,13 @@
   }
   exports.fields = fields;
 
+  function editableFields() {
+    return fields().filter(function(field) {
+      return field.label != null;
+    });
+  }
+  exports.editableFields = editableFields;
+
   function getCanvas() {
     return canvas;
   }
@@ -84,9 +91,12 @@
           return cb(null, fieldData);
         });
       } else {
+        console.log(fieldData);
         return cb(new Error("Unable to resolve image"));
       }
     }
+
+    return cb(null, fieldData);
   }
 
   function resolveImagesHelper(fieldDataStack, cb) {
@@ -115,23 +125,28 @@
       , fieldChoices = choices[field.id]
       , dataValue = card.data[field.id]
       , defaultSpec = card.defaultData[field.id]
+      , dataSrc = null
       , chosenValue = null;
 
     // != null is true for undefined as well (don't use !==)
     if (fieldValue != null) {
-      chosenValue = fieldValue
+      dataSrc = fieldValue
     } else if (dataValue != null) {
-      chosenValue = dataValue;
+      dataSrc = dataValue;
     } else if (defaultSpec != null) {
-      if (defaultSpec.data != null) {
-        chosenValue = defaultSpec.data;
-      } else if (defaultSpec.choiceIndex != null) {
-        if (typeof defaultSpec.choiceIndex === "number") {
-          chosenValue = fieldChoices[defaultSpec.choiceIndex];
-        } else if (typeof defaultSpec.choiceIndex === "object") { // Assume array of indices
+      dataSrc = defaultSpec;
+    }
+
+    if (dataSrc != null) {
+      if (dataSrc.value != null) {
+        chosenValue = dataSrc.value;
+      } else if (dataSrc.choiceIndex != null) {
+        if (typeof dataSrc.choiceIndex === "number") {
+          chosenValue = fieldChoices[dataSrc.choiceIndex];
+        } else if (typeof dataSrc.choiceIndex === "object") { // Assume array of indices
           chosenValue = [];
 
-          defaultSpec.choiceIndex.forEach(function(index) {
+          dataSrc.choiceIndex.forEach(function(index) {
             chosenValue.push(fieldChoices[index]);
           });
         }
