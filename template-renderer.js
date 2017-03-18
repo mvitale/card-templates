@@ -130,7 +130,7 @@
 
     // != null is true for undefined as well (don't use !==)
     if (fieldValue != null) {
-      dataSrc = fieldValue
+      dataSrc = field
     } else if (dataValue != null) {
       dataSrc = dataValue;
     } else if (defaultSpec != null) {
