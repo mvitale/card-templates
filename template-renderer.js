@@ -43,7 +43,7 @@
   }
 
   function imageFields() {
-    return fields().filter((field) => {
+    return editableFields().filter((field) => {
       return field["type"] === "image";
     });
   }
@@ -382,6 +382,16 @@
     if (data.zoomLevel) {
       sHeight -= data.zoomLevel * sWidth / 100;
       sWidth = targetRatio * sHeight;
+    }
+
+    console.log(data);
+
+    if (data.panX) {
+      sx += data.panX * sWidth / 300;
+    }
+
+    if (data.panY) {
+      sy += data.panY * sHeight / 300;
     }
 
     ctx.drawImage(
