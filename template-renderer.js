@@ -126,7 +126,7 @@
       , dataValue = card.data[field.id]
       , defaultSpec = card.defaultData[field.id]
       , dataSrc = null
-      , chosenValue = null;
+      , chosenValue = {};
 
     // != null is true for undefined as well (don't use !==)
     if (fieldValue != null) {
@@ -138,21 +138,28 @@
     }
 
     if (dataSrc != null) {
-      if (dataSrc.value != null) {
-        chosenValue = dataSrc.value;
-      } else if (dataSrc.choiceIndex != null) {
+      if (dataSrc.choiceIndex != null) {
         if (typeof dataSrc.choiceIndex === "number") {
           chosenValue = fieldChoices[dataSrc.choiceIndex];
         } else if (typeof dataSrc.choiceIndex === "object") { // Assume array of indices
           chosenValue = [];
 
           dataSrc.choiceIndex.forEach(function(index) {
-            chosenValue.push(fieldChoices[index]);
+           chosenValue.push(fieldChoices[index]);
           });
         }
       }
-    }
 
+      // TODO: Address case where chosen value is an array
+      if (dataSrc.value != null) {
+        if (typeof dataSrc.value === "object") {
+          // This isn't necessarily a safe assumption - TODO: add error handling
+          Object.assign(chosenValue, dataSrc.value);
+        } else {
+          chosenValue = dataSrc.value;
+        }
+      }
+    }
     drawingData[field.id] = chosenValue;
 
     if (field.type === "image") {
