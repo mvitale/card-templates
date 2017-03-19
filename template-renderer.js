@@ -91,7 +91,6 @@
           return cb(null, fieldData);
         });
       } else {
-        console.log(fieldData);
         return cb(new Error("Unable to resolve image"));
       }
     }
@@ -383,8 +382,6 @@
       sHeight -= data.zoomLevel * sWidth / 100;
       sWidth = targetRatio * sHeight;
     }
-
-    console.log(data);
 
     if (data.panX) {
       sx += data.panX * sWidth / 300;
