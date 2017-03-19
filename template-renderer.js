@@ -350,47 +350,13 @@
   }
 
   function drawImageHelper(ctx, field, data) {
-    var sx = 0
-      , sy = 0
-      , sWidth = 0
-      , sHeight = 0
-      , defaults = null
-      ;
-
-    if (data.sx != null && data.sy != null && data.sWidth != null) {
-      sx = data.sx;
-      sy = data.sy;
-      sWidth = data.sWidth;
-      sHeight = sWidth * targetRatio;
-    } else {
-      defaults = defaultSDimensions(field, data.image);
-      sx = defaults.sx;
-      sy = defaults.sy;
-      sWidth = defaults.sWidth;
-      sHeight = defaults.sHeight;
-    }
-
-    ctx.drawImage(
-      data.image,
-      sx,
-      sy,
-      sWidth,
-      sHeight,
-      field.x,
-      field.y,
-      field.width,
-      field.height
-    );
-  }
-
-  function defaultSDimensions(field, image) {
     var targetRatio = (field.width * 1.0) / field.height
-      , imageHeight = typeof(image.naturalHeight) === "undefined" ?
-          image.height :
-          image.naturalHeight
-      , imageWidth = typeof(image.naturalWidth) === "undefined" ?
-          image.width :
-          image.naturalWidth
+      , imageHeight = typeof(data.image.naturalHeight) === "undefined" ?
+          data.image.height :
+          data.image.naturalHeight
+      , imageWidth = typeof(data.image.naturalWidth) === "undefined" ?
+          data.image.width :
+          data.image.naturalWidth
       , imageRatio = (imageWidth * 1.0) / imageHeight
       , sx = 0
       , sy = 0
@@ -412,6 +378,28 @@
       sx = gap / 2.0;
     }
 
+    // TODO: integrate into above calculations
+    if (data.zoomLevel) {
+      sHeight -= data.zoomLevel * sWidth / 100;
+      sWidth = targetRatio * sHeight;
+    }
+
+    ctx.drawImage(
+      data.image,
+      sx,
+      sy,
+      sWidth,
+      sHeight,
+      field.x,
+      field.y,
+      field.width,
+      field.height
+    );
+  }
+
+  function defaultSDimensions(field, image) {
+
+
     return {
       sWidth: sWidth,
       sHeight: sHeight,
@@ -419,7 +407,6 @@
       sy: sy
     };
   }
-  exports.defaultSDimensions = defaultSDimensions;
 
   function drawImage(ctx, field, data) {
     drawImageHelper(ctx, field, data);
