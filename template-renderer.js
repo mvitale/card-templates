@@ -267,16 +267,16 @@
     var keyFont = field.keyFont ? field.keyFont : field.font
       , valFont = field.valFont ? field.valFont : field.font;
 
-    drawTextHelper(ctx, field.keyFont, field.color, data.key, field.keyX, field.y);
-    drawTextHelper(ctx, field.valFont, field.color, data.val, field.valX, field.y);
+    drawTextHelper(ctx, field.keyFont, field.color, data.key, null, field.keyX, field.y);
+    drawTextHelper(ctx, field.valFont, field.color, data.val, null, field.valX, field.y);
   }
 
   function drawText(ctx, field, data) {
-    drawTextHelper(ctx, field.font, field.color, data, field.x, field.y,
+    drawTextHelper(ctx, field.font, field.color, data, field.prefix, field.x, field.y,
       field.wrapAt, field.textAlign);
   }
 
-  function drawTextHelper(ctx, font, color, value, x, y, wrapAt, textAlign) {
+  function drawTextHelper(ctx, font, color, value, prefix, x, y, wrapAt, textAlign) {
     var fontSizeLineHeightMultiplier = 1.12
       , words = null
       , width = null
@@ -288,6 +288,10 @@
 
     ctx.font = font;
     ctx.fillStyle = color;
+
+    if (prefix) {
+      value = prefix + value;
+    }
 
     // TODO: Allow wrapping for text alignments other than default left
     if (wrapAt == null) {
