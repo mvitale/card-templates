@@ -161,13 +161,13 @@
     }
     drawingData[field.id] = chosenValue;
 
-    if (field.type === "image") {
+    if (field.type === 'image' || field.type === 'labeled-choice-image') {
       return resolveImage(chosenValue, function(err, fieldData) {
         if (err) return cb(err);
 
         return buildDrawingDataHelper(fields, choices, drawingData, cb);
       });
-    } else if (field.type === "multi-image") {
+    } else if (field.type === 'multi-image') {
       return resolveImages(chosenValue, function(err, fieldData) {
         if (err) return cb(err);
 
@@ -203,24 +203,25 @@
 
   function drawField(ctx, field, fieldData) {
     switch(field.type) {
-      case "color":
+      case 'color':
         drawColor(ctx, field, fieldData);
         break;
-      case "line":
+      case 'line':
         drawLine(ctx, field, fieldData);
-      case "text":
+      case 'text':
         drawText(ctx, field, fieldData);
         break;
-      case "key-val-text":
+      case 'key-val-text':
         drawKeyValText(ctx, field, fieldData);
         break;
-      case "image":
+      case 'image':
+      case 'labeled-choice-image':
         drawImage(ctx, field, fieldData);
         break;
-      case "multi-image":
+      case 'multi-image':
         drawMultiImage(ctx, field, fieldData);
         break;
-      case "var-list":
+      case 'var-list':
         drawVarList(ctx, field, fieldData);
         break;
       default:
