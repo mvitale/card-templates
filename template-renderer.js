@@ -12,7 +12,8 @@
     , imageFetcher = null
     , card = null
     , template = null
-    , canvas = null;
+    , canvas = null
+    ;
 
   exports.setTemplateSupplier = function(supplier) {
     templateSupplier = supplier;
@@ -114,6 +115,25 @@
     resolveImagesHelper(fieldData.slice(0), cb);
   }
 
+  function mergeDrawingData(choiceVal, customVal) {
+    var merged = choiceVal;
+
+    if (customVal != null) {
+      if (typeof customVal === "object") {
+        if (merged === null) {
+          merged = {};
+        }
+
+        // This isn't necessarily a safe assumption - TODO: add error handling
+        Object.assign(merged, customVal);
+      } else {
+        merged = customVal;
+      }
+    }
+
+    return merged;
+  }
+
   function buildDrawingDataHelper(fields, choices, drawingData, cb) {
     if (fields.length === 0) {
       return cb(null, drawingData);
@@ -125,7 +145,7 @@
       , dataValue = card.data[field.id]
       , defaultSpec = card.defaultData[field.id]
       , dataSrc = null
-      , chosenValue = {};
+      , chosenValue = null;
 
     // != null is true for undefined as well (don't use !==)
     if (fieldValue != null) {
@@ -140,7 +160,7 @@
       if (dataSrc.choiceIndex != null) {
         if (typeof dataSrc.choiceIndex === "number") {
           chosenValue = fieldChoices[dataSrc.choiceIndex];
-        } else if (typeof dataSrc.choiceIndex === "object") { // Assume array of indices
+        } else if (Array.isArray(dataSrc.choiceIndex)) { // Assume array of indices
           chosenValue = [];
 
           dataSrc.choiceIndex.forEach(function(index) {
@@ -149,14 +169,19 @@
         }
       }
 
-      // TODO: Address case where chosen value is an array
-      if (dataSrc.value != null) {
-        if (typeof dataSrc.value === "object") {
-          // This isn't necessarily a safe assumption - TODO: add error handling
-          Object.assign(chosenValue, dataSrc.value);
-        } else {
-          chosenValue = dataSrc.value;
+      // TODO: validate
+      if (chosenValue != null) {
+        if (dataSrc.value != null) {
+          if (Array.isArray(dataSrc.value)) {
+            for (var i = 0; i < dataSrc.value.length; i++) {
+              chosenValue[i] = mergeDrawingData(chosenValue[i], dataSrc.value[i]);
+            }
+          } else {
+            chosenValue = mergeDrawingData(chosenValue, dataSrc.value);
+          }
         }
+      } else {
+        chosenValue = dataSrc.value;
       }
     }
     drawingData[field.id] = chosenValue;
@@ -172,7 +197,7 @@
         if (err) return cb(err);
 
         return buildDrawingDataHelper(fields, choices, drawingData, cb);
-      })
+      });
     } else {
       return buildDrawingDataHelper(fields, choices, drawingData, cb);
     }
@@ -201,6 +226,10 @@
   }
   exports.draw = draw;
 
+  function fieldRequiresData(field) {
+    return field.type !== "line";
+  }
+
   function drawField(ctx, field, fieldData) {
     switch(field.type) {
       case 'color':
@@ -224,6 +253,8 @@
       case 'var-list':
         drawVarList(ctx, field, fieldData);
         break;
+      case 'key-val-list':
+        drawKeyValList(ctx, field, fieldData);
       default:
         // TODO: Handle this case
     }
@@ -259,6 +290,40 @@
     }
   }
 
+  function drawKeyValList(ctx, field, data) {
+    var curData = null
+      , curField = null
+      , yOffset = 0
+      , fields = []
+      , additionalElems = field.additionalElements
+      , additionalKeys = Object.keys(additionalElems)
+      ;
+
+    for (var i = 0; i < data.length; i++) {
+      fields.push(Object.assign({type: 'key-val-text'}, field.keyValSpec));
+
+      additionalKeys.forEach(function(key) {
+        fields.push(Object.assign({}, additionalElems[key]));
+      });
+
+      curData = data[i];
+      yOffset = field.yIncr * i;
+
+      fields.forEach(function(curField) {
+        switch (curField.type) {
+          case "line":
+            curField.startY += field.y + yOffset;
+            curField.endY += field.y + yOffset;
+            break;
+          default:
+            curField.y += field.y + yOffset;
+        }
+
+        drawField(ctx, curField, curData);
+      });
+    }
+  }
+
   function drawColor(ctx, field, data) {
     ctx.fillStyle = data;
     ctx.fillRect(field.x, field.y, field.width, field.height);
@@ -285,7 +350,9 @@
       , curY = y
       , curWord = null
       , curText = null
-      , newLine = false;
+      , newLine = false
+      , value = value === null ? '' : value
+      ;
 
     ctx.font = font;
     ctx.fillStyle = color;
