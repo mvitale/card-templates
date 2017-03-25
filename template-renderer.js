@@ -134,39 +134,65 @@
     return merged;
   }
 
-  function buildDrawingDataHelper(fields, choices, drawingData, cb) {
+  function resolveChoice(choiceIndex, fieldChoices) {
+    var chosenValue = null;
+
+    if (typeof choiceIndex === "number") {
+      chosenValue = fieldChoices[choiceIndex];
+    } else if (Array.isArray(choiceIndex)) { // Assume array of indices
+      chosenValue = [];
+
+      choiceIndex.forEach(function(index) {
+       chosenValue.push(fieldChoices[index]);
+      });
+    }
+
+    return chosenValue;
+  }
+
+  function resolveColor(colorSchemes, value) {
+    var schemeName = null
+      , schemeField = null
+      , parts = null
+      ;
+
+    if (value.startsWith('$')) {
+      parts = value.substring(1).split('.');
+      schemeName = parts[0];
+      schemeField = parts[1];
+
+      value = colorSchemes[schemeName][schemeField];
+    }
+
+    return value;
+  }
+
+  function buildDrawingDataHelper(colorSchemes, fields, choices, drawingData, cb) {
     if (fields.length === 0) {
       return cb(null, drawingData);
     }
 
-    var field = fields.pop()
+    var cardCopy = JSON.parse(JSON.stringify(card))
+      , field = fields.pop()
       , fieldValue = field.value
       , fieldChoices = choices[field.id]
-      , dataValue = card.data[field.id]
-      , defaultSpec = card.defaultData[field.id]
+      , dataValue = cardCopy.data[field.id]
+      , defaultSpec = cardCopy.defaultData[field.id]
       , dataSrc = null
       , chosenValue = null;
 
     // != null is true for undefined as well (don't use !==)
-    if (fieldValue != null) {
-      dataSrc = field
-    } else if (dataValue != null) {
+    if (dataValue != null) {
       dataSrc = dataValue;
+    } else if (fieldValue != null) {
+      dataSrc = field
     } else if (defaultSpec != null) {
       dataSrc = defaultSpec;
     }
 
     if (dataSrc != null) {
       if (dataSrc.choiceIndex != null) {
-        if (typeof dataSrc.choiceIndex === "number") {
-          chosenValue = fieldChoices[dataSrc.choiceIndex];
-        } else if (Array.isArray(dataSrc.choiceIndex)) { // Assume array of indices
-          chosenValue = [];
-
-          dataSrc.choiceIndex.forEach(function(index) {
-           chosenValue.push(fieldChoices[index]);
-          });
-        }
+        chosenValue = resolveChoice(dataSrc.choiceIndex, fieldChoices);
       }
 
       // TODO: validate
@@ -184,27 +210,58 @@
         chosenValue = dataSrc.value;
       }
     }
+
+    if (field.type === "color") {
+      chosenValue = resolveColor(colorSchemes, chosenValue);
+    }
+
     drawingData[field.id] = chosenValue;
 
-    if (field.type === 'image' || field.type === 'labeled-choice-image') {
+    if (field.type === 'text') {
+      resolveTextColor(chosenValue, field, colorSchemes);
+    } else if (field.type === 'image' || field.type === 'labeled-choice-image') {
       return resolveImage(chosenValue, function(err, fieldData) {
         if (err) return cb(err);
 
-        return buildDrawingDataHelper(fields, choices, drawingData, cb);
+        return buildDrawingDataHelper(colorSchemes, fields, choices, drawingData, cb);
       });
     } else if (field.type === 'multi-image') {
       return resolveImages(chosenValue, function(err, fieldData) {
         if (err) return cb(err);
 
-        return buildDrawingDataHelper(fields, choices, drawingData, cb);
+        return buildDrawingDataHelper(colorSchemes, fields, choices, drawingData, cb);
       });
-    } else {
-      return buildDrawingDataHelper(fields, choices, drawingData, cb);
     }
+
+    return buildDrawingDataHelper(colorSchemes, fields, choices, drawingData, cb);
+  }
+
+  function resolveTextColor(data, field, colorSchemes) {
+    if (data == null) return;
+
+    var color = data.color != null ? data.color : field.color;
+    color = resolveColor(colorSchemes, color);
+    data.color = color;
   }
 
   function buildDrawingData(fields, choices, cb) {
-    return buildDrawingDataHelper(fields, choices, {}, cb);
+    var colorSchemes = []
+      , otherFields = []
+      ;
+
+    fields.forEach(function(field) {
+      if (field.type === "color-scheme") {
+        colorSchemes.push(field);
+      } else {
+        otherFields.push(field);
+      }
+    });
+
+
+    // TODO: refactor
+    buildDrawingDataHelper(null, colorSchemes, choices, {}, function(err, schemes) {
+      return buildDrawingDataHelper(schemes, otherFields, choices, {}, cb);
+    });
   }
 
   function draw(cb) {
@@ -227,10 +284,14 @@
   exports.draw = draw;
 
   function fieldRequiresData(field) {
-    return field.type !== "line";
+    return field.type !== 'line';
   }
 
   function drawField(ctx, field, fieldData) {
+    if (fieldRequiresData && fieldData == null) {
+      return;
+    }
+
     switch(field.type) {
       case 'color':
         drawColor(ctx, field, fieldData);
@@ -338,11 +399,12 @@
   }
 
   function drawText(ctx, field, data) {
-    drawTextHelper(ctx, field.font, field.color, data, field.prefix, field.x, field.y,
+    drawTextHelper(ctx, field.font, data.color, data.text, field.prefix, field.x, field.y,
       field.wrapAt, field.textAlign);
   }
 
   function drawTextHelper(ctx, font, color, value, prefix, x, y, wrapAt, textAlign) {
+    console.log(value, color);
     var fontSizeLineHeightMultiplier = 1.12
       , words = null
       , width = null
@@ -351,8 +413,9 @@
       , curWord = null
       , curText = null
       , newLine = false
-      , value = value === null ? '' : value
       ;
+
+    value = value === null ? '' : value;
 
     ctx.font = font;
     ctx.fillStyle = color;
