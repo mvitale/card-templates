@@ -80,23 +80,16 @@
   }
   exports.getCanvas = getCanvas;
 
-  function resolveImage(fieldData, cb) {
-    if (!fieldData.image) {
-      if (fieldData.url) {
-        return imageFetcher.fetch(fieldData.url, function(err, image) {
-          if (err) return cb(err);
-
-          delete fieldData.url;
-          fieldData.image = image;
-
-          return cb(null, fieldData);
-        });
+  function resolveImage(image, url, cb) {
+    if (!image) {
+      if (url) {
+        return imageFetcher.fetch(url, cb);
       } else {
-        return cb(new Error("Unable to resolve image"));
+        return cb(new Error('No url provided'));
       }
     }
 
-    return cb(null, fieldData);
+    return cb(null, image);
   }
 
   function resolveImagesHelper(fieldDataStack, cb) {
@@ -167,115 +160,330 @@
     return value;
   }
 
-  function buildDrawingDataHelper(colorSchemes, fields, choices, drawingData, cb) {
-    if (fields.length === 0) {
-      return cb(null, drawingData);
+  function buildColorData(field, data, colorSchemes) {
+    var resolvedColor = resolveColor(colorSchemes, data.color);
+
+    return {
+      type: 'color',
+      x: field.x,
+      y: field.y,
+      height: field.height,
+      width: field.width,
+      color: resolvedColor
+    };
+  }
+
+  function buildLineData(field, colorSchemes) {
+    var resolvedColor = resolveColor(colorSchemes, field.color);
+
+    return {
+      type: 'line',
+      color: resolvedColor,
+      startX: field.startX,
+      startY: field.startY,
+      endX: field.endX,
+      endY: field.endY,
+      width: field.width
+    };
+  }
+
+  function buildTextData(field, data, colorSchemes) {
+    var text = data === null ? '' : data.text;
+
+    return buildTextDataHelper(
+      field.x,
+      field.y,
+      field.font,
+      field.color,
+      field.prefix,
+      field.wrapAt,
+      field.textAlign,
+      text,
+      colorSchemes
+    );
+  }
+
+  function buildKeyValTextData(field, data, colorSchemes) {
+    return [
+      buildTextDataHelper(
+        field.keyX,
+        field.y,
+        field.font,
+        field.color,
+        field.prefix,
+        field.wrapAt,
+        field.textAlign,
+        data.key.text,
+        colorSchemes
+      ),
+      buildTextDataHelper(
+        field.valX,
+        field.y,
+        field.font,
+        field.color,
+        field.prefix,
+        field.wrapAt,
+        field.textAlign,
+        data.val.text,
+        colorSchemes
+      )
+    ];
+  }
+
+  function buildTextDataHelper(
+    x,
+    y,
+    font,
+    color,
+    prefix,
+    wrapAt,
+    textAlign,
+    text,
+    colorSchemes
+  ) {
+    var resolvedColor = resolveColor(colorSchemes, color);
+
+    return {
+      type: 'text',
+      font: font,
+      color: resolvedColor,
+      text: text,
+      prefix: prefix,
+      x: x,
+      y: y,
+      wrapAt: wrapAt,
+      textAlign: textAlign
+    };
+  }
+
+  function buildImageData(field, data, colorSchemes, cb) {
+    var results = [];
+
+    if (field.credit) {
+      results.push(
+        buildTextData(field.credit, data.credit, colorSchemes));
     }
 
-    var cardCopy = JSON.parse(JSON.stringify(card))
-      , field = fields.pop()
-      , fieldValue = field.value
-      , fieldChoices = choices[field.id]
-      , dataValue = cardCopy.data[field.id]
-      , defaultSpec = cardCopy.defaultData[field.id]
-      , dataSrc = null
-      , chosenValue = null;
+    buildImageDataHelper(field, data, function(err, imageData) {
+      if (err) return cb(err);
 
+      results.push(imageData);
+      cb(null, results);
+    });
+  }
+
+  function buildImageDataHelper(field, data, cb) {
+    resolveImage(data.image, data.url, function(err, image) {
+      if (err) return cb(err);
+
+      var result = {
+        type: 'image',
+        x: field.x,
+        y: field.y,
+        height: field.height,
+        width: field.width,
+        panX: data.panX,
+        panY: data.panY,
+        zoomLevel: data.zoomLevel,
+        image: image
+      };
+
+      cb(null, result);
+    });
+  }
+
+  function buildMultiImageDataHelper(
+    fields, datas, colorSchemes, resultsAccum, cb
+  ) {
+    if (fields.length === 0) {
+      return cb(null, resultsAccum);
+    }
+
+    var field = fields.pop()
+      , data = datas.pop()
+      ;
+
+    buildImageDataHelper(field, data, function(err, imageData) {
+      if (err) return cb(err);
+
+      resultsAccum.push(imageData);
+      buildMultiImageDataHelper(fields, datas, colorSchemes, resultsAccum, cb);
+    });
+  }
+
+  function buildMultiImageData(field, data, colorSchemes, cb) {
+    // TODO: Validate data length etc.
+
+    var specs = field.specs[data.length - 1];
+    buildMultiImageDataHelper(specs.slice(0), data.slice(0), colorSchemes, [], cb);
+  }
+
+  function buildKeyValListData(field, data, colorSchemes, cb) {
+    var curData = null
+      , offsetField = null
+      , yOffset = 0
+      , results = []
+      ;
+
+    for (var i = 0; i < data.length; i++) {
+      // Build data for key-val element, setting the y value according
+      // to the field's yIncr and y values
+      curData = data[i];
+
+      yOffset = i * field.yIncr + field.y;
+      offsetField = Object.assign({}, field.keyValSpec);
+      offsetField.y += yOffset;
+
+      results = results.concat(
+        buildKeyValTextData(offsetField, curData, colorSchemes)
+      );
+
+      // Draw additionalElements (which do not require data)
+      field.additionalElements.forEach(function(elemField) {
+        switch(elemField.type) {
+          case 'line':
+            offsetField = Object.assign({}, elemField);
+            offsetField.startY += yOffset;
+            offsetField.endY += yOffset;
+            results.push(buildLineData(offsetField, colorSchemes));
+            break;
+          default:
+            return cb(new Error('Unsupported field type: ' + elemField.type));
+        }
+      });
+    }
+
+    return cb(null, results);
+  }
+
+  function buildDataForField(field, data, colorSchemes, cb) {
+    switch (field.type) {
+      case 'color':
+        cb(null, [buildColorData(field, data, colorSchemes)]);
+        break;
+      case 'line':
+        cb(null, [buildLineData(field, colorSchemes)]);
+        break;
+      case 'text':
+        cb(null, [buildTextData(field, data, colorSchemes)]);
+        break;
+      case 'key-val-text':
+        cb(null, buildKeyValTextData(field, data, colorSchemes));
+        break;
+      case 'image':
+      case 'labeled-choice-image':
+        buildImageData(field, data, colorSchemes, cb);
+        break;
+      case 'multi-image':
+        buildMultiImageData(field, data, colorSchemes, cb);
+        break;
+      case 'key-val-list':
+        buildKeyValListData(field, data, colorSchemes, cb);
+        break;
+      default:
+        return cb(new Error('Invalid field type: ' + field.type));
+    }
+  }
+
+  function buildColorSchemes(colorSchemeFields) {
+    var colorSchemes = {};
+
+    colorSchemeFields.forEach(function(field) {
+      var colorScheme = resolveChosenValue(field);
+      colorSchemes[field.id] = colorScheme;
+    });
+
+    return colorSchemes;
+  }
+
+  function resolveChosenValue(field) {
+    var fieldValue = field.value
+      , fieldChoices = card.choices[field.id]
+      , dataValue = card.data[field.id]
+      , fieldDefault = card.defaultData[field.id]
+      , dataSrc = null
+      , chosenValue = null
+      ;
+
+    /*
+     * Choose data from, in order of preference:
+     * 1) User-supplied data
+     * 2) Card default data
+     * 3) Field default data
+     */
     // != null is true for undefined as well (don't use !==)
     if (dataValue != null) {
       dataSrc = dataValue;
+    } else if (fieldDefault != null) {
+      dataSrc = fieldDefault;
     } else if (fieldValue != null) {
-      dataSrc = field
-    } else if (defaultSpec != null) {
-      dataSrc = defaultSpec;
+      dataSrc = field;
     }
 
     if (dataSrc != null) {
       if (dataSrc.choiceIndex != null) {
         chosenValue = resolveChoice(dataSrc.choiceIndex, fieldChoices);
-      }
 
-      // TODO: validate
-      if (chosenValue != null) {
         if (dataSrc.value != null) {
-          if (Array.isArray(dataSrc.value)) {
-            for (var i = 0; i < dataSrc.value.length; i++) {
-              chosenValue[i] = mergeDrawingData(chosenValue[i], dataSrc.value[i]);
-            }
-          } else {
-            chosenValue = mergeDrawingData(chosenValue, dataSrc.value);
-          }
+          Object.assign(chosenValue, dataSrc.value);
         }
       } else {
         chosenValue = dataSrc.value;
       }
     }
 
-    if (field.type === "color") {
-      chosenValue = resolveColor(colorSchemes, chosenValue);
-    }
-
-    drawingData[field.id] = chosenValue;
-
-    if (field.type === 'text') {
-      resolveTextColor(chosenValue, field, colorSchemes);
-    } else if (field.type === 'image' || field.type === 'labeled-choice-image') {
-      return resolveImage(chosenValue, function(err, fieldData) {
-        if (err) return cb(err);
-
-        return buildDrawingDataHelper(colorSchemes, fields, choices, drawingData, cb);
-      });
-    } else if (field.type === 'multi-image') {
-      return resolveImages(chosenValue, function(err, fieldData) {
-        if (err) return cb(err);
-
-        return buildDrawingDataHelper(colorSchemes, fields, choices, drawingData, cb);
-      });
-    }
-
-    return buildDrawingDataHelper(colorSchemes, fields, choices, drawingData, cb);
+    return chosenValue;
   }
 
-  function resolveTextColor(data, field, colorSchemes) {
-    if (data == null) return;
+  function buildDrawingDataHelper(colorSchemes, fields, drawingData, cb) {
+    if (fields.length === 0) {
+      return cb(null, drawingData.reverse());
+    }
 
-    var color = data.color != null ? data.color : field.color;
-    color = resolveColor(colorSchemes, color);
-    data.color = color;
+    var field = fields.pop()
+      , chosenValue = resolveChosenValue(field)
+      ;
+
+    buildDataForField(field, chosenValue, colorSchemes, function(err, fieldResults) {
+      if (err) return cb(err);
+
+      drawingData = drawingData.concat(fieldResults);
+      return buildDrawingDataHelper(colorSchemes, fields, drawingData, cb);
+    });
   }
 
-  function buildDrawingData(fields, choices, cb) {
-    var colorSchemes = []
+  /*
+   * Build a list of elements renderable by the drawField method from the
+   * card's fields and data sources. Complex fields (e.g., key-val-text) are
+   * converted to primitive field types (e.g., text)
+   */
+  function buildDrawingData(fields, cb) {
+    var colorSchemeFields = []
       , otherFields = []
+      , colorSchemes = null
       ;
 
     fields.forEach(function(field) {
-      if (field.type === "color-scheme") {
-        colorSchemes.push(field);
+      if (field.type === 'color-scheme') {
+        colorSchemeFields.push(field);
       } else {
         otherFields.push(field);
       }
     });
 
-
-    // TODO: refactor
-    buildDrawingDataHelper(null, colorSchemes, choices, {}, function(err, schemes) {
-      return buildDrawingDataHelper(schemes, otherFields, choices, {}, cb);
-    });
+    colorSchemes = buildColorSchemes(colorSchemeFields);
+    buildDrawingDataHelper(colorSchemes, otherFields, [], cb);
   }
 
   function draw(cb) {
-    var fields = exports.fields();
-
-    buildDrawingData(fields.slice(0), card.choices, function(err, drawingData) {
+    buildDrawingData(exports.fields(), function(err, drawingData) {
       if (err) return cb(err);
+      console.log(JSON.stringify(drawingData, null, 2));
 
-      var ctx = canvas.getContext('2d')
-        , fieldData = null;
+      var ctx = canvas.getContext('2d');
 
-      fields.forEach(function(field) {
-        fieldData = drawingData[field.id];
-        drawField(ctx, field, fieldData);
+      drawingData.forEach(function(data) {
+        drawField(ctx, data);
       });
 
       return cb(null, canvas);
@@ -287,149 +495,57 @@
     return field.type !== 'line';
   }
 
-  function drawField(ctx, field, fieldData) {
-    if (fieldRequiresData && fieldData == null) {
-      return;
-    }
-
-    switch(field.type) {
+  function drawField(ctx, data) {
+    switch(data.type) {
       case 'color':
-        drawColor(ctx, field, fieldData);
+        drawColor(ctx, data);
         break;
       case 'line':
-        drawLine(ctx, field, fieldData);
-      case 'text':
-        drawText(ctx, field, fieldData);
+        drawLine(ctx, data);
         break;
-      case 'key-val-text':
-        drawKeyValText(ctx, field, fieldData);
+      case 'text':
+        drawText(ctx, data);
         break;
       case 'image':
-      case 'labeled-choice-image':
-        drawImage(ctx, field, fieldData);
+        drawImage(ctx, data);
         break;
-      case 'multi-image':
-        drawMultiImage(ctx, field, fieldData);
-        break;
-      case 'var-list':
-        drawVarList(ctx, field, fieldData);
-        break;
-      case 'key-val-list':
-        drawKeyValList(ctx, field, fieldData);
       default:
         // TODO: Handle this case
     }
   }
 
-  function drawVarList(ctx, field, data) {
-    var curData = null
-      , curField = null
-      , yOffset = 0
-      , fields = field.fields
-      , fieldKeys = Object.keys(fields)
-      ;
-
-
-    for (var i = 0; i < data.length; i++) {
-      curData = data[i];
-      yOffset = field.yIncr * i;
-
-      fieldKeys.forEach((fieldKey) => {
-        var curField = Object.assign({}, fields[fieldKey]);
-
-        switch (curField.type) {
-          case "line":
-            curField.startY += field.y + yOffset;
-            curField.endY += field.y + yOffset;
-            break;
-          default:
-            curField.y += field.y + yOffset;
-        }
-
-        drawField(ctx, curField, curData[fieldKey]);
-      });
-    }
+  function drawColor(ctx, data) {
+    ctx.fillStyle = data.color;
+    ctx.fillRect(data.x, data.y, data.width, data.height);
   }
 
-  function drawKeyValList(ctx, field, data) {
-    var curData = null
-      , curField = null
-      , yOffset = 0
-      , fields = []
-      , additionalElems = field.additionalElements
-      , additionalKeys = Object.keys(additionalElems)
-      ;
-
-    for (var i = 0; i < data.length; i++) {
-      fields.push(Object.assign({type: 'key-val-text'}, field.keyValSpec));
-
-      additionalKeys.forEach(function(key) {
-        fields.push(Object.assign({}, additionalElems[key]));
-      });
-
-      curData = data[i];
-      yOffset = field.yIncr * i;
-
-      fields.forEach(function(curField) {
-        switch (curField.type) {
-          case "line":
-            curField.startY += field.y + yOffset;
-            curField.endY += field.y + yOffset;
-            break;
-          default:
-            curField.y += field.y + yOffset;
-        }
-
-        drawField(ctx, curField, curData);
-      });
-    }
-  }
-
-  function drawColor(ctx, field, data) {
-    ctx.fillStyle = data;
-    ctx.fillRect(field.x, field.y, field.width, field.height);
-  }
-
-  function drawKeyValText(ctx, field, data) {
-    var keyFont = field.keyFont ? field.keyFont : field.font
-      , valFont = field.valFont ? field.valFont : field.font;
-
-    drawTextHelper(ctx, field.keyFont, field.color, data.key, null, field.keyX, field.y);
-    drawTextHelper(ctx, field.valFont, field.color, data.val, null, field.valX, field.y);
-  }
-
-  function drawText(ctx, field, data) {
-    drawTextHelper(ctx, field.font, data.color, data.text, field.prefix, field.x, field.y,
-      field.wrapAt, field.textAlign);
-  }
-
-  function drawTextHelper(ctx, font, color, value, prefix, x, y, wrapAt, textAlign) {
-    console.log(value, color);
+  function drawText(ctx, data) {
     var fontSizeLineHeightMultiplier = 1.12
       , words = null
       , width = null
-      , lineX = x
-      , curY = y
+      , lineX = data.x
+      , curY = data.y
       , curWord = null
       , curText = null
       , newLine = false
+      , value = data.text
+      , x = data.x
+      , y = data.y
       ;
 
-    value = value === null ? '' : value;
+    ctx.font = data.font;
+    ctx.fillStyle = data.color;
 
-    ctx.font = font;
-    ctx.fillStyle = color;
-
-    if (prefix) {
-      value = prefix + value;
+    if (data.prefix) {
+      value = data.prefix + value;
     }
 
     // TODO: Allow wrapping for text alignments other than default left
-    if (wrapAt == null) {
-      if (textAlign != null) {
-        if (textAlign === 'center') {
+    if (data.wrapAt == null) {
+      if (data.textAlign != null) {
+        if (data.textAlign === 'center') {
           x = x - ctx.measureText(value, x, y).width / 2;
-        } else if (textAlign === 'right') {
+        } else if (data.textAlign === 'right') {
           x = x - ctx.measureText(value, x, y).width;
         }
         // left is implicit - nothing to do
@@ -452,7 +568,7 @@
         curText = ' ' + curWord;
         newX = ctx.measureText(curText).width + lineX;
 
-        if (newX <= wrapAt) {
+        if (newX <= data.wrapAt) {
           ctx.fillText(curText, lineX, curY);
           lineX = newX;
         } else {
@@ -470,21 +586,8 @@
     return parseFloat(fontArgs[0].replace('px', ''));
   }
 
-  function drawMultiImage(ctx, field, data) {
-    var specs = field.specs[data.length - 1]
-      , curData = null
-      , curSpec = null;
-
-    for (var i=0; i < data.length; i++) {
-      curData = data[i];
-      curSpec = specs[i];
-
-      drawImageHelper(ctx, curSpec, curData);
-    }
-  }
-
-  function drawImageHelper(ctx, field, data) {
-    var targetRatio = (field.width * 1.0) / field.height
+  function drawImage(ctx, data) {
+    var targetRatio = (data.width * 1.0) / data.height
       , imageHeight = typeof(data.image.naturalHeight) === "undefined" ?
           data.image.height :
           data.image.naturalHeight
@@ -532,39 +635,20 @@
       sy,
       sWidth,
       sHeight,
-      field.x,
-      field.y,
-      field.width,
-      field.height
+      data.x,
+      data.y,
+      data.width,
+      data.height
     );
   }
 
-  function defaultSDimensions(field, image) {
-
-
-    return {
-      sWidth: sWidth,
-      sHeight: sHeight,
-      sx: sx,
-      sy: sy
-    };
-  }
-
-  function drawImage(ctx, field, data) {
-    drawImageHelper(ctx, field, data);
-
-    if (field.credit) {
-      drawText(ctx, field.credit, data.credit);
-    }
-  }
-
-  function drawLine(ctx, field, data) {
-    ctx.strokeStyle = field.color;
-    ctx.lineWidth = field.width;
+  function drawLine(ctx, data) {
+    ctx.strokeStyle = data.color;
+    ctx.lineWidth = data.width;
 
     ctx.beginPath();
-    ctx.moveTo(field.startX, field.startY);
-    ctx.lineTo(field.endX, field.endY);
+    ctx.moveTo(data.startX, data.startY);
+    ctx.lineTo(data.endX, data.endY);
     ctx.stroke();
   }
 })();
