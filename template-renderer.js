@@ -92,41 +92,6 @@
     return cb(null, image);
   }
 
-  function resolveImagesHelper(fieldDataStack, cb) {
-    if (fieldDataStack.length === 0) {
-      return cb();
-    }
-
-    resolveImage(fieldDataStack.pop(), function(err, data) {
-      if (err) return cb(err);
-
-      return resolveImagesHelper(fieldDataStack, cb);
-    });
-  }
-
-  function resolveImages(fieldData, cb) {
-    resolveImagesHelper(fieldData.slice(0), cb);
-  }
-
-  function mergeDrawingData(choiceVal, customVal) {
-    var merged = choiceVal;
-
-    if (customVal != null) {
-      if (typeof customVal === "object") {
-        if (merged === null) {
-          merged = {};
-        }
-
-        // This isn't necessarily a safe assumption - TODO: add error handling
-        Object.assign(merged, customVal);
-      } else {
-        merged = customVal;
-      }
-    }
-
-    return merged;
-  }
-
   function resolveChoice(choiceIndex, fieldChoices) {
     var chosenValue = null;
 
@@ -478,7 +443,6 @@
   function draw(cb) {
     buildDrawingData(exports.fields(), function(err, drawingData) {
       if (err) return cb(err);
-      console.log(JSON.stringify(drawingData, null, 2));
 
       var ctx = canvas.getContext('2d');
 
