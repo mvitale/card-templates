@@ -279,8 +279,12 @@
   function buildMultiImageData(field, data, colorSchemes, cb) {
     // TODO: Validate data length etc.
 
-    var specs = field.specs[data.length - 1];
-    buildMultiImageDataHelper(specs.slice(0), data.slice(0), colorSchemes, [], cb);
+    if (data.length) {
+      var specs = field.specs[data.length - 1];
+      buildMultiImageDataHelper(specs.slice(0), data.slice(0), colorSchemes, [], cb);
+    } else {
+      cb(null, []);
+    }
   }
 
   function buildKeyValListData(field, data, colorSchemes, cb) {
