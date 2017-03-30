@@ -13,6 +13,7 @@
     , card = null
     , template = null
     , canvas = null
+    , fabric = null
     ;
 
   exports.setTemplateSupplier = function(supplier) {
@@ -41,6 +42,10 @@
     } else {
       return cb();
     }
+  }
+
+  exports.setFabric = function(theFabric) {
+    fabric = theFabric;
   }
 
   function imageFields() {
@@ -163,6 +168,8 @@
       field.prefix,
       field.wrapAt,
       field.textAlign,
+      field.fontFamily,
+      field.fontSize,
       text,
       colorSchemes
     );
@@ -178,6 +185,8 @@
         field.prefix,
         field.wrapAt,
         field.textAlign,
+        field.fontFamily,
+        field.fontSize,
         data.key.text,
         colorSchemes
       ),
@@ -189,6 +198,8 @@
         field.prefix,
         field.wrapAt,
         field.textAlign,
+        field.fontFamily,
+        field.fontSize,
         data.val.text,
         colorSchemes
       )
@@ -203,6 +214,8 @@
     prefix,
     wrapAt,
     textAlign,
+    fontFamily,
+    fontSize,
     text,
     colorSchemes
   ) {
@@ -211,6 +224,8 @@
     return {
       type: 'text',
       font: font,
+      fontFamily: fontFamily,
+      fontSize: fontSize,
       color: resolvedColor,
       text: text,
       prefix: prefix,
@@ -219,6 +234,23 @@
       wrapAt: wrapAt,
       textAlign: textAlign
     };
+  }
+
+  function buildSvgData(field, data, cb) {
+    fabric.loadSVGFromURL(data.url, function(objects, options) {
+      var obj = fabric.util.groupSVGElements(objects, options);
+
+
+
+      cb(null, [{
+        type: 'svg',
+        x: field.x,
+        y: field.y,
+        height: field.height,
+        width: field.width,
+        svg: obj
+      }]);
+    });
   }
 
   function buildImageData(field, data, colorSchemes, cb) {
@@ -336,8 +368,10 @@
         cb(null, buildKeyValTextData(field, data, colorSchemes));
         break;
       case 'image':
-      case 'labeled-choice-image':
         buildImageData(field, data, colorSchemes, cb);
+        break;
+      case 'labeled-choice-svg':
+        buildSvgData(field, data, cb);
         break;
       case 'multi-image':
         buildMultiImageData(field, data, colorSchemes, cb);
@@ -444,12 +478,17 @@
     buildDrawingData(exports.fields(), function(err, drawingData) {
       if (err) return cb(err);
 
+      /*
       var ctx = canvas.getContext('2d');
 
       drawingData.forEach(function(data) {
         drawField(ctx, data);
       });
+      */
 
+      drawingData.forEach(function(data) {
+        drawField(data);
+      });
       return cb(null, canvas);
     });
   }
@@ -459,6 +498,25 @@
     return field.type !== 'line';
   }
 
+  function drawField(data) {
+    switch (data.type) {
+      case 'text':
+        drawFabricText(data);
+        break;
+      case 'color':
+        drawFabricColor(data);
+        break;
+      case 'image':
+        drawFabricImage(data);
+        break;
+      case 'svg':
+        drawFabricSvg(data);
+        break;
+      default:
+    }
+  }
+
+  /*
   function drawField(ctx, data) {
     switch(data.type) {
       case 'color':
@@ -477,10 +535,53 @@
         // TODO: Handle this case
     }
   }
+  */
+
+  function drawFabricSvg(data) {
+    var svg = data.svg;
+
+    /*
+    svg.set({
+      top: data.x,
+      left: data.y,
+    });
+    */
+    canvas.add(svg);
+  }
 
   function drawColor(ctx, data) {
     ctx.fillStyle = data.color;
     ctx.fillRect(data.x, data.y, data.width, data.height);
+  }
+
+  function drawFabricColor(data) {
+    var rect = new fabric.Rect({
+      left: data.x,
+      top: data.y,
+      width: data.width,
+      height: data.height,
+      fill: data.color
+    });
+
+    canvas.add(rect);
+  }
+
+  function drawFabricText(data) {
+    var options = { left: data.x, top: data.y }
+      , fabricText = null
+      ;
+
+    if (data.fontFamily) options.fontFamily = data.fontFamily;
+    if (data.fontSize) options.fontSize = data.fontSize;
+
+    if (data.textAlign) {
+      options.textAlign = data.textAlign;
+      options.originX = data.textAlign;
+    }
+
+    fabricText = new fabric.Text(data.text, options);
+
+    canvas.add(fabricText);
   }
 
   function drawText(ctx, data) {
@@ -548,6 +649,23 @@
   function fontSizePx(ctx) {
     var fontArgs = ctx.font.split(' ');
     return parseFloat(fontArgs[0].replace('px', ''));
+  }
+
+  function drawFabricImage(data) {
+    console.log(data);
+    var image = data.image;
+
+    image.set({
+      left: data.x,
+      top: data.y,
+      width: data.width,
+      height: data.height,
+      alignX: 'mid',
+      alignY: 'mid',
+      meetOrSlice: 'slice'
+    });
+
+    canvas.add(image);
   }
 
   function drawImage(ctx, data) {
