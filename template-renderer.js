@@ -153,7 +153,7 @@
   }
 
   function buildTextData(field, data, colorSchemes) {
-    var text = data === null ? '' : data.text;
+    var text = data == null ? '' : data.text;
 
     return buildTextDataHelper(
       field.x,
