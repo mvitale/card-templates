@@ -1,4 +1,31 @@
+/*
+ * Renders a Canvas image from a Card. This module functions in both Node.js and
+ * browser environments: when used in a Node environment, it behaves as a normal
+ * Node module; otherwise, it is globally available as window.TemplateRenderer.
+ *
+ * This module has several dependencies that must be injected before attempting
+ * to render a Card:
+ *
+ * Template supplier - provide a card template's (specified by name) 'spec'
+ * object, which describes all of the fields for a template. Injected by
+ * calling setTemplateSupplier.
+ *
+ * Canvas supplier - takes a width and height in pixels and returns a Canvas
+ * instance. Injected by calling setCanvasSupplier.
+ *
+ * Image fetcher - resolve image URL and supply an Image instance. Injected by
+ * setImageFetcher
+ *
+ * ---------------------------------------------------------------------------
+ *
+ * After all dependencies have been injected, call setCard to set the card to
+ * render, then draw to render the card to a Canvas.
+ */
 (function() {
+  /*
+   * Coarse check to see if we're in a Node.js environment or not and set the
+   * exports Object accordingly.
+   */
   var exports = {};
 
   if (typeof module === "undefined") {
@@ -7,6 +34,9 @@
     module.exports = exports;
   }
 
+  /*
+   * State
+   */
   var templateSupplier = null
     , canvasSupplier = null
     , imageFetcher = null
@@ -15,18 +45,38 @@
     , canvas = null
     ;
 
+  /*
+   * Inject template supplier dependency
+   */
   exports.setTemplateSupplier = function(supplier) {
     templateSupplier = supplier;
   }
 
+  /*
+   * Inject Canvas supplier dependency
+   */
   exports.setCanvasSupplier = function(supplier) {
     canvasSupplier = supplier;
   }
 
+  /*
+   * Inject image fetcher dependency
+   */
   exports.setImageFetcher = function(fetcher) {
     imageFetcher = fetcher;
   }
 
+  /*
+   * Set the Card to render. This method does not make a copy of the Card, so
+   * any external changes it will be reflected here. Calling this method causes
+   * the Card's template to be fetched, meaning that the get*Fields methods can
+   * be called after this method completes; it also causes the drawing Canvas
+   * to be set, which can be accessed by calling the getCanvas method.
+   *
+   * Parameters:
+   *   theCard - the Card
+   *   cb - function(err)
+   */
   exports.setCard = function setCard(theCard, cb) {
     card = theCard;
 
@@ -43,6 +93,9 @@
     }
   }
 
+  /*
+   * Get all fields with type 'image' from the Card's template
+   */
   function imageFields() {
     return editableFields().filter((field) => {
       return field["type"] === "image";
@@ -50,6 +103,9 @@
   }
   exports.imageFields = imageFields;
 
+  /*
+   * Get all fields from the Card's template
+   */
   function fields() {
     var ret = []
       , fieldIds = Object.keys(template.fields)
@@ -68,6 +124,9 @@
   }
   exports.fields = fields;
 
+  /*
+   * Get all editable fields from the Card's template
+   */
   function editableFields() {
     return fields().filter(function(field) {
       return field.label != null;
@@ -75,6 +134,9 @@
   }
   exports.editableFields = editableFields;
 
+  /*
+   * Get the Canvas on which the draw method will render the Card
+   */
   function getCanvas() {
     return canvas;
   }
@@ -444,6 +506,15 @@
     buildDrawingDataHelper(colorSchemes, otherFields, [], cb);
   }
 
+  /*
+   * Render the Card on the Canvas
+   *
+   * Parameters:
+   *   cb - function(err, result)
+   *
+   * Result:
+   *   The Canvas with the Card rendered on it
+   */
   function draw(cb) {
     buildDrawingData(exports.fields(), function(err, drawingData) {
       if (err) return cb(err);
