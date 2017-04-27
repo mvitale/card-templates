@@ -30,27 +30,6 @@
       ;
 
     /*
-     * Inject template supplier dependency
-     */
-    this.setTemplateSupplier = function(supplier) {
-      templateSupplier = supplier;
-    }
-
-    /*
-     * Inject Canvas supplier dependency
-     */
-    this.setCanvasSupplier = function(supplier) {
-      canvasSupplier = supplier;
-    }
-
-    /*
-     * Inject image fetcher dependency
-     */
-    this.setImageFetcher = function(fetcher) {
-      imageFetcher = fetcher;
-    }
-
-    /*
      * Set the Card to render. This method does not make a copy of the Card, so
      * any external changes it will be reflected here. Calling this method causes
      * the Card's template to be fetched, meaning that the get*Fields methods can
