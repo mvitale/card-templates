@@ -3,18 +3,21 @@
  * browser environments: when used in a Node environment, it behaves as a normal
  * Node module; otherwise, it is globally available as window.TemplateRenderer.
  *
- * This module has several dependencies that must be injected before attempting
- * to render a Card:
+ * To use, construct a TemplateRenderer instance templateRenderer, call
+ * templateRenderer.setCard with the card data, and call templateRenderer.render
+ * to draw the card to the Canvas instance.
  *
- * Template supplier - provide a card template's (specified by name) 'spec'
- * object, which describes all of the fields for a template. Injected by
- * calling setTemplateSupplier.
+ * Parameters:
+ *   templateSupplier - must implement templateSupplier.supply(templateName, cb),
+ *   where templateName is the name of a card template, and the result is that
+ *   template's 'spec' value.
  *
- * Canvas supplier - takes a width and height in pixels and returns a Canvas
- * instance. Injected by calling setCanvasSupplier.
+ *   canvasSupplier - must implement canvasSupplier.supply(width, height), which
+ *   returns a Canvas instance with the specified width and height.
  *
- * Image fetcher - resolve image URL and supply an Image instance. Injected by
- * setImageFetcher
+ *   imageFetcher - must implement imageFetcher.fetch(url, cb), where url is an
+ *   image url, which yields an image object that can be drawn on the Canvas context
+ *   using c.drawImage.
  *
  * ---------------------------------------------------------------------------
  *
