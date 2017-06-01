@@ -120,7 +120,7 @@
     }
     this.getFieldValue = getFieldValue;
 
-    function setFieldValue(fieldId, key, value) {
+    function setFieldAttr(fieldId, key, value) {
       var data = card.data[fieldId];
 
       if (!data) {
@@ -134,7 +134,7 @@
 
       data.value[key] = value;
     }
-    this.setFieldValue = setFieldValue;
+    this.setFieldAttr = setFieldAttr;
 
     function resolveImage(image, url, cb) {
       if (!image) {
