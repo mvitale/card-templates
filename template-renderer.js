@@ -43,6 +43,10 @@
     this.setCard = function setCard(theCard, cb) {
       card = theCard;
 
+      if (!card.data) {
+        card.data = {};
+      }
+
       if (!template || card.templateName !== template.name) {
         templateSupplier.supply(card.templateName, function(err, theTemplate) {
           if (err) return cb(err);
@@ -66,21 +70,24 @@
     }
     this.imageFields = imageFields;
 
+    function fieldForId(id) {
+      var field = template.fields[id];
+      return Object.assign({ id: id}, field);
+    }
+
     /*
      * Get all fields from the Card's template
      */
     function fields() {
       var ret = []
         , fieldIds = Object.keys(template.fields)
-        , fields = template.fields
         , fieldId = null
         , field = null;
 
       for (var i = 0; i < fieldIds.length; i++) {
         fieldId = fieldIds[i];
-        field = fields[fieldId];
 
-        ret.push(Object.assign({}, { id: fieldId }, field));
+        ret.push(fieldForId(fieldId));
       }
 
       return ret;
@@ -104,6 +111,27 @@
       return canvas;
     }
     this.getCanvas = getCanvas;
+
+    function getFieldValue(fieldId) {
+      return resolveChosenValue(fieldForId(fieldId));
+    }
+    this.getFieldValue = getFieldValue;
+
+    function setFieldValue(fieldId, key, value) {
+      var data = card.data[fieldId];
+
+      if (!data) {
+        data = {};
+        card.data[fieldId] = data;
+      }
+
+      if (!data.value) {
+        data.value = {};
+      }
+
+      data.value[key] = value;
+    }
+    this.setFieldValue = setFieldValue;
 
     function resolveImage(image, url, cb) {
       if (!image) {
@@ -394,7 +422,6 @@
       var fieldValue = field.value
         , fieldChoices = card.choices[field.id]
         , dataValue = card.data[field.id]
-        , fieldDefault = card.defaultData[field.id]
         , dataSrc = null
         , chosenValue = null
         ;
@@ -408,8 +435,6 @@
       // != null is true for undefined as well (don't use !==)
       if (dataValue != null) {
         dataSrc = dataValue;
-      } else if (fieldDefault != null) {
-        dataSrc = fieldDefault;
       } else if (fieldValue != null) {
         dataSrc = field;
       }
