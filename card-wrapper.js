@@ -55,6 +55,7 @@ var exports = (function() {
 
       data.value[attr] = value;
     }
+    this.setDataAttr = setDataAttr;
 
     function getDataAttr(fieldName, attr, defaultVal) {
       var data = card.data[fieldName]
@@ -68,6 +69,7 @@ var exports = (function() {
 
       return attrVal;
     }
+    this.getDataAttr = getDataAttr;
 
     this.getFieldChoices = function(fieldId) {
       return card.choices[fieldId];
@@ -81,6 +83,19 @@ var exports = (function() {
     this.setZoomLevel = function(imgFieldName, zoomLevel) {
       checkFieldNameValid(imgFieldName, 'image');
       setDataAttr(imgFieldName, 'zoomLevel', zoomLevel);
+    }
+
+    this.getImageLocation = function(fieldName) {
+      var field = template.fields[fieldName];
+
+      checkFieldNameValid(fieldName, 'image');
+
+      return {
+        x: field.x,
+        y: field.y,
+        width: field.width,
+        height: field.height
+      };
     }
 
     this.rawCard = card;
