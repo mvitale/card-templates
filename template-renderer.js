@@ -25,11 +25,93 @@
  * render, then draw to render the card to a Canvas.
  */
 (function() {
+  function RotatedImageCache() {
+    var that = this
+      , cache = {}
+      ;
+
+    function RotatedImage(image, rotationDegrees, imageWidth, imageHeight) {
+      var that = this;
+
+      that.image = image
+      that.degrees = rotationDegrees
+
+      buildCanvas();
+
+      function rotateVector(v, theta) {
+        var cosTheta = Math.cos(theta)
+          , sinTheta = Math.sin(theta)
+          ;
+
+        return {
+          x: cosTheta * v.x - sinTheta * v.y,
+          y: sinTheta * v.x + cosTheta * v.y
+        };
+      }
+
+      /*
+       * Given a width and height, we can produce three vectors in R2 that describe a rectangle
+       * with one point on the origin and the other points being the endpoints of the vectors.
+       * This function returns those vectors rotated around the origin by theta radians.
+       * e2 describes the farthest point from the origin.
+       */
+      function rotatedRectVectors(width, height, theta) {
+        var e1 = { x: width, y: 0 }
+          , e2 = { x: width, y: height }
+          , e3 = { x: 0, y: height }
+          ;
+
+        return {
+          e1: rotateVector(e1, theta),
+          e2: rotateVector(e2, theta),
+          e3: rotateVector(e3, theta)
+        };
+      }
+
+      function calculateDimension(d1, d2, d3) {
+        return Math.max(Math.abs(d1 - d3), Math.abs(d2));
+      }
+
+      function buildCanvas() {
+        var theta = rotationDegrees * Math.PI / 180
+          , vectors = rotatedRectVectors(imageWidth, imageHeight, theta)
+          , canvasWidth = calculateDimension(vectors.e1.x, vectors.e2.x, vectors.e3.x)
+          , canvasHeight = calculateDimension(vectors.e1.y, vectors.e2.y, vectors.e3.y)
+          ;
+
+        $tmpCanvas = $('<canvas>');
+        $tmpCanvas.attr('width', canvasWidth);
+        $tmpCanvas.attr('height', canvasHeight);
+
+        tmpCtx = $tmpCanvas[0].getContext('2d');
+
+        tmpCtx.translate(canvasWidth / 2, canvasHeight / 2);
+        tmpCtx.rotate(theta);
+        tmpCtx.drawImage(image, -imageWidth/2, -imageHeight/2);
+
+        that.canvas = $tmpCanvas[0];
+      }
+    }
+
+    that.get = function(image, name, degrees, width, height) {
+      var key = name
+        , result = cache[key]
+        ;
+
+      if (!result || result.image !== image || result.degrees !== degrees) {
+        cache[key] = new RotatedImage(image, degrees, width, height);
+      }
+
+      return cache[key].canvas;
+    }
+  }
+
   function TemplateRenderer(templateSupplier, canvasSupplier, imageFetcher) {
     var card = null
       , template = null
       , canvas = null
       , that = this
+      , rotatedImageCache = new RotatedImageCache()
       ;
 
     /*
@@ -75,7 +157,7 @@
 
     function fieldForId(id) {
       var field = template.fields[id];
-      return Object.assign({ id: id}, field);
+      return Object.assign({ id: id }, field);
     }
 
     /*
@@ -305,8 +387,10 @@
           width: field.width,
           panX: data.panX,
           panY: data.panY,
+          rotate: data.rotate,
           zoomLevel: data.zoomLevel,
-          image: image
+          image: image,
+          id: field.id
         };
 
         cb(null, result);
@@ -629,7 +713,15 @@
         , sy = 0
         , sWidth = 0
         , sHeight = 0
-        , gap = 0;
+        , gap = 0
+        , dx = -data.width / 2
+        , dy = -data.height / 2
+        , imageToDraw = data.image
+        , rotateRad
+        , invRotateRad
+        , $tmpCanvas
+        , tmpCtx
+        ;
 
       if (imageRatio <= targetRatio) {
         sWidth = imageWidth;
@@ -659,17 +751,33 @@
         sy += data.panY * sHeight / 300;
       }
 
+      ctx.save();
+      ctx.translate(data.x + data.width / 2, data.y + data.height / 2);
+
+      if (data.rotate) {
+        imageToDraw =
+          rotatedImageCache.get(
+            data.image,
+            data.id,
+            data.rotate,
+            imageWidth,
+            imageHeight
+          );
+      }
+
       ctx.drawImage(
-        data.image,
+        imageToDraw,
         sx,
         sy,
         sWidth,
         sHeight,
-        data.x,
-        data.y,
+        dx,
+        dy,
         data.width,
         data.height
       );
+
+      ctx.restore();
     }
 
     function drawLine(ctx, data) {
