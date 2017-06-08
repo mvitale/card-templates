@@ -30,11 +30,13 @@
       , cache = {}
       ;
 
-    function RotatedImage(image, rotationDegrees, imageWidth, imageHeight) {
+    function RotatedImage(image, rotationDegrees, flipHoriz, flipVert, imageWidth, imageHeight) {
       var that = this;
 
-      that.image = image
-      that.degrees = rotationDegrees
+      that.image = image;
+      that.degrees = rotationDegrees;
+      that.flipHoriz = flipHoriz;
+      that.flipVert = flipVert;
 
       buildCanvas();
 
@@ -72,11 +74,14 @@
         return Math.max(Math.abs(d1 - d3), Math.abs(d2));
       }
 
+      // TODO: make server-side compatible (dependency injection)
       function buildCanvas() {
         var theta = rotationDegrees * Math.PI / 180
           , vectors = rotatedRectVectors(imageWidth, imageHeight, theta)
           , canvasWidth = calculateDimension(vectors.e1.x, vectors.e2.x, vectors.e3.x)
           , canvasHeight = calculateDimension(vectors.e1.y, vectors.e2.y, vectors.e3.y)
+          , xScale = flipHoriz ? -1 : 1
+          , yScale = flipVert  ? -1 : 1
           ;
 
         $tmpCanvas = $('<canvas>');
@@ -87,19 +92,24 @@
 
         tmpCtx.translate(canvasWidth / 2, canvasHeight / 2);
         tmpCtx.rotate(theta);
+        tmpCtx.scale(xScale, yScale);
         tmpCtx.drawImage(image, -imageWidth/2, -imageHeight/2);
 
         that.canvas = $tmpCanvas[0];
       }
     }
 
-    that.get = function(image, name, degrees, width, height) {
+    that.get = function(image, name, degrees, flipHoriz, flipVert, width, height) {
       var key = name
         , result = cache[key]
         ;
 
-      if (!result || result.image !== image || result.degrees !== degrees) {
-        cache[key] = new RotatedImage(image, degrees, width, height);
+      if (!result ||
+          result.image.src !== image.src ||
+          result.degrees !== degrees ||
+          result.flipVert !== flipVert ||
+          result.flipHoriz !== flipHoriz) {
+        cache[key] = new RotatedImage(image, degrees, flipHoriz, flipVert, width, height);
       }
 
       return cache[key].canvas;
@@ -388,6 +398,8 @@
           panX: data.panX,
           panY: data.panY,
           rotate: data.rotate,
+          flipVert: data.flipVert,
+          flipHoriz: data.flipHoriz,
           zoomLevel: data.zoomLevel,
           image: image,
           id: field.id
@@ -754,12 +766,14 @@
       ctx.save();
       ctx.translate(data.x + data.width / 2, data.y + data.height / 2);
 
-      if (data.rotate) {
+      if (data.rotate || data.flipHoriz || data.flipVert) {
         imageToDraw =
           rotatedImageCache.get(
             data.image,
             data.id,
-            data.rotate,
+            data.rotate || 0,
+            data.flipHoriz || false,
+            data.flipVert || false,
             imageWidth,
             imageHeight
           );

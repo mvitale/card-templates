@@ -77,7 +77,7 @@ var exports = (function() {
         , attrVal = value ? value[attr] : null
         ;
 
-      if (attrVal === null) {
+      if (!attrVal) {
         attrVal = defaultVal;
       }
 
