@@ -7,16 +7,11 @@ var exports = (function() {
   var exports = {};
 
   var templateSupplier = null
-    , renderer = null
     ;
 
   exports.setTemplateSupplier = function(supplier) {
     templateSupplier = supplier;
   };
-
-  exports.setRenderer = function(theRenderer) {
-    renderer = theRenderer
-  }
 
   exports.newInstance = function(card, cb) {
     if (!templateSupplier) {
@@ -28,19 +23,30 @@ var exports = (function() {
         return cb(err);
       }
 
-      return cb(null, new CardWrapper(card, template, renderer));
+      return cb(null, new CardWrapper(card, template));
     });
   };
 
-  function CardWrapper(card, template, renderer) {
+  function CardWrapper(card, template) {
     var card = card
       , template = template
-      , renderer = renderer
       , that = this
+      , changeCbs = []
       ;
 
     var defaultZoomLevel = 0
       ;
+
+    function change(cb) {
+      changeCbs.push(cb);
+    }
+    this.change = change;
+
+    function changeEvent() {
+      changeCbs.forEach(function(cb) {
+        cb();
+      });
+    }
 
     function width() {
       return template.width;
@@ -72,6 +78,8 @@ var exports = (function() {
       }
 
       data.value[attr] = value;
+
+      changeEvent();
     }
     this.setDataAttr = setDataAttr;
 
@@ -206,12 +214,6 @@ var exports = (function() {
       }
 
       return chosenValue;
-    }
-
-    this.draw = function() {
-      renderer.draw(that, function(err) {
-        if (err) console.log(err);
-      });
     }
 
     function resolveColor(colorSchemes, value) {
