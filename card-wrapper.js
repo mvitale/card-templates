@@ -37,27 +37,44 @@ var exports = (function() {
     var defaultZoomLevel = 0
       ;
 
+    /*
+     * Register a callback to be called when data is changed. No arguments
+     * are passed to the callback.
+     */
     function change(cb) {
       changeCbs.push(cb);
     }
-    this.change = change;
+    that.change = change;
 
+    /*
+     * Call all callbacks registered with this.change.
+     */
     function changeEvent() {
       changeCbs.forEach(function(cb) {
         cb();
       });
     }
 
+    /*
+     * Get the width of this card, as specified in its template
+     */
     function width() {
       return template.width;
     }
     that.width = width;
 
+    /*
+     * Get the height of this card, as specified in its template.
+     */
     function height() {
       return template.height;
     }
     that.height = height;
 
+    /*
+     * True if this card's template contains a field with name <name> and
+     * type <type>, false o/w.
+     */
     function checkFieldNameValid(name, type) {
       // TODO: check this condition
       if (!(name in template.fields) || template.fields[name].type !== type) {
@@ -65,6 +82,9 @@ var exports = (function() {
       }
     }
 
+    /*
+     * Set an attribute for a field, e.g., zoomLevel for an image field.
+     */
     function setDataAttr(fieldName, attr, value) {
       var data = card.data[fieldName];
 
@@ -79,10 +99,15 @@ var exports = (function() {
 
       data.value[attr] = value;
 
+
       changeEvent();
     }
-    this.setDataAttr = setDataAttr;
+    that.setDataAttr = setDataAttr;
 
+    /*
+     * Get the value of a data attribute for a field, or <defaultVal>
+     * if it isn't set or is set to null.
+     */
     function getDataAttr(fieldName, attr, defaultVal) {
       var data = card.data[fieldName]
         , value = data ? data.value : null
@@ -95,23 +120,19 @@ var exports = (function() {
 
       return attrVal;
     }
-    this.getDataAttr = getDataAttr;
+    that.getDataAttr = getDataAttr;
 
-    this.getFieldChoices = function(fieldId) {
+    /*
+     * Get the list of default choices for a field.
+     */
+    that.getFieldChoices = function(fieldId) {
       return card.choices[fieldId];
     }
 
-    this.getZoomLevel = function(imgFieldName) {
-      checkFieldNameValid(imgFieldName, 'image');
-      return getDataAttr(imgFieldName, 'zoomLevel', defaultZoomLevel);
-    }
-
-    this.setZoomLevel = function(imgFieldName, zoomLevel) {
-      checkFieldNameValid(imgFieldName, 'image');
-      setDataAttr(imgFieldName, 'zoomLevel', zoomLevel);
-    }
-
-    this.getImageLocation = function(fieldName) {
+    /*
+     * Get the drawing coordinates and dimensions for an 'image' field.
+     */
+    that.getImageLocation = function(fieldName) {
       var field = template.fields[fieldName];
 
       checkFieldNameValid(fieldName, 'image');
@@ -124,9 +145,13 @@ var exports = (function() {
       };
     }
 
+    /*
+     * Get the field specification with a given id from the template enriched
+     * with the id as an added attribute.
+     */
     function fieldForId(id) {
       var field = template.fields[id];
-      return Object.assign({ id: id}, field);
+      return Object.assign({ id: id } , field);
     }
 
     /*
@@ -156,13 +181,21 @@ var exports = (function() {
       return ret;
     }
 
+    /*
+     * Get all editable image fields from the Card's template
+     */
     function imageFields() {
-      return editableFields().filter((field) => {
+      return editableFields().filter(function(field) {
         return field.type === 'image';
       });
     }
-    this.imageFields = imageFields;
+    that.imageFields = imageFields;
 
+    /*
+     * Given a choiceIndex and a list of fieldChoices, return the corresponding
+     * value(s). choiceIndex may be a number or an Array. In the latter case,
+     * a list of values is returned.
+     */
     function resolveChoice(choiceIndex, fieldChoices) {
       var chosenValue = null;
 
@@ -179,9 +212,12 @@ var exports = (function() {
       return chosenValue;
     }
 
-    this.getFieldValue = function(fieldId) {
-      var field = fieldForId(fieldId)
-        , fieldValue = field.value
+    /*
+     * Get a field's data value. If a field has a choiceIndex and a value,
+     * merge the value into the resolved choice(s).
+     */
+    function getFieldValue(field) {
+      var fieldValue = field.value
         , fieldChoices = card.choices[field.id]
         , dataValue = card.data[field.id]
         , dataSrc = null
@@ -190,9 +226,8 @@ var exports = (function() {
 
       /*
        * Choose data from, in order of preference:
-       * 1) User-supplied data
-       * 2) Card default data
-       * 3) Field default data
+       * 1) card.data
+       * 2) field.value
        */
       // != null is true for undefined as well (don't use !==)
       if (dataValue != null) {
@@ -215,7 +250,12 @@ var exports = (function() {
 
       return chosenValue;
     }
+    that.getFieldValue = getFieldValue;
 
+    /*
+     * Resolve a color scheme reference in a field's data value. Color scheme
+     * references are of the form $<color_scheme_name>.<color_key>.
+     */
     function resolveColor(colorSchemes, value) {
       var schemeName = null
         , schemeField = null
@@ -233,6 +273,9 @@ var exports = (function() {
       return value;
     }
 
+    /*
+     * Build drawing data for field type 'color'
+     */
     function buildColorData(field, data, colorSchemes) {
       var resolvedColor = resolveColor(colorSchemes, data.color);
 
@@ -246,6 +289,9 @@ var exports = (function() {
       };
     }
 
+    /*
+     * Build drawing data for field type 'line'
+     */
     function buildLineData(field, colorSchemes) {
       var resolvedColor = resolveColor(colorSchemes, field.color);
 
@@ -260,6 +306,9 @@ var exports = (function() {
       };
     }
 
+    /*
+     * Build drawing data for field type 'text'
+     */
     function buildTextData(field, data, colorSchemes) {
       var text = data == null ? '' : data.text;
 
@@ -276,6 +325,9 @@ var exports = (function() {
       );
     }
 
+    /*
+     * Build drawing data for field type key-val-text.
+     */
     function buildKeyValTextData(field, data, colorSchemes) {
       return [
         buildTextDataHelper(
@@ -303,6 +355,9 @@ var exports = (function() {
       ];
     }
 
+    /*
+     * Build drawing data of type 'text'
+     */
     function buildTextDataHelper(
       x,
       y,
@@ -329,6 +384,9 @@ var exports = (function() {
       };
     }
 
+    /*
+     * Build drawing data for field type 'image'
+     */
     function buildImageData(field, data, colorSchemes) {
       var results = [];
 
@@ -341,6 +399,9 @@ var exports = (function() {
       return results;
     }
 
+    /*
+     * Build drawing data of type image
+     */
     function buildImageDataHelper(field, data) {
         var result = {
           type: 'image',
@@ -361,37 +422,32 @@ var exports = (function() {
       return result;
     }
 
-    function buildMultiImageDataHelper(fields, datas, colorSchemes) {
-      var results = [];
-
-      for (var i = 0; i < fields.length; i++) {
-        var field = fields[i]
-          , data = datas[i]
-          ;
-
-        results.push(buildImageDataHelper(field, data));
-      }
-
-      return results;
-    }
-
-    function buildMultiImageData(field, data, colorSchemes) {
+    /*
+     * Build drawing data for field type 'multi-image'
+     */
+    function buildMultiImageData(field, datas, colorSchemes) {
       var results = []
         , specs
         ;
 
-      if (data.length) {
-        specs = field.specs[data.length - 1];
-        results = buildMultiImageDataHelper(
-          specs.slice(0),
-          data.slice(0),
-          colorSchemes
-        );
+      if (datas.length) {
+        specs = field.specs[datas.length - 1];
+
+        for (var i = 0; i < specs.length; i++) {
+          var spec = specs[i]
+            , data = datas[i]
+            ;
+
+          results.push(buildImageDataHelper(spec, data));
+        }
       }
 
       return results;
     }
 
+    /*
+     * Build drawing data for field type key-val-list
+     */
     function buildKeyValListData(field, data, colorSchemes) {
       var curData = null
         , offsetField = null
@@ -430,6 +486,9 @@ var exports = (function() {
       return results;
     }
 
+    /*
+     * Build drawing data for a field
+     */
     function buildDataForField(field, data, colorSchemes) {
       var results;
 
@@ -467,53 +526,16 @@ var exports = (function() {
       var colorSchemes = {};
 
       colorSchemeFields.forEach(function(field) {
-        var colorScheme = resolveChosenValue(field);
+        var colorScheme = getFieldValue(field);
         colorSchemes[field.id] = colorScheme;
       });
 
       return colorSchemes;
     }
 
-    function resolveChosenValue(field) {
-      var fieldValue = field.value
-        , fieldChoices = card.choices[field.id]
-        , dataValue = card.data[field.id]
-        , dataSrc = null
-        , chosenValue = null
-        ;
-
-      /*
-       * Choose data from, in order of preference:
-       * 1) User-supplied data
-       * 2) Card default data
-       * 3) Field default data
-       */
-      // != null is true for undefined as well (don't use !==)
-      if (dataValue != null) {
-        dataSrc = dataValue;
-      } else if (fieldValue != null) {
-        dataSrc = field;
-      }
-
-      if (dataSrc != null) {
-        if (dataSrc.choiceIndex != null) {
-          chosenValue = resolveChoice(dataSrc.choiceIndex, fieldChoices);
-
-          if (dataSrc.value != null) {
-            Object.assign(chosenValue, dataSrc.value);
-          }
-        } else {
-          chosenValue = dataSrc.value;
-        }
-      }
-
-      return chosenValue;
-    }
-
     /*
-     * Build a list of elements renderable by the drawField method from the
-     * card's fields and data sources. Complex fields (e.g., key-val-text) are
-     * converted to primitive field types (e.g., text)
+     * Build a list of primitive drawing data elements (of the types recognized
+     * by the renderer) from the card.
      */
     function buildDrawingData() {
       var colorSchemeFields = []
@@ -533,7 +555,7 @@ var exports = (function() {
       colorSchemes = buildColorSchemes(colorSchemeFields);
 
       otherFields.forEach(function(field) {
-        var chosenValue = resolveChosenValue(field)
+        var chosenValue = getFieldValue(field)
           , fieldDatas = buildDataForField(field, chosenValue, colorSchemes)
 
         drawingData = drawingData.concat(fieldDatas);
@@ -541,14 +563,8 @@ var exports = (function() {
 
       return drawingData;
     }
-    this.buildDrawingData = buildDrawingData;
-
-    this.rawCard = card;
+    that.buildDrawingData = buildDrawingData;
   }
-
-
-
-
 
   return exports;
 })();
