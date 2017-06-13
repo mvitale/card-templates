@@ -162,6 +162,7 @@ var exports = (function() {
         return field.label != null;
       });
     }
+    that.editableFields = editableFields;
 
     /*
      * Get all fields from the Card's template
@@ -217,38 +218,34 @@ var exports = (function() {
      * merge the value into the resolved choice(s).
      */
     function getFieldValue(field) {
-      var fieldValue = field.value
+      var fieldValue = field.value || {}
         , fieldChoices = card.choices[field.id]
-        , dataValue = card.data[field.id]
+        , data = card.data[field.id] || {}
+        , dataValue = data.value || {}
         , dataSrc = null
         , chosenValue = null
+        , mergedValue
+        , curVal
         ;
 
-      /*
-       * Choose data from, in order of preference:
-       * 1) card.data
-       * 2) field.value
-       */
-      // != null is true for undefined as well (don't use !==)
-      if (dataValue != null) {
-        dataSrc = dataValue;
-      } else if (fieldValue != null) {
-        dataSrc = field;
-      }
+      if (dataValue instanceof Array) {
+        mergedValue = [];
 
-      if (dataSrc != null) {
-        if (dataSrc.choiceIndex != null) {
-          chosenValue = resolveChoice(dataSrc.choiceIndex, fieldChoices);
-
-          if (dataSrc.value != null) {
-            Object.assign(chosenValue, dataSrc.value);
-          }
-        } else {
-          chosenValue = dataSrc.value;
+        for (var i = 0; i < dataValue.length; i++) {
+          curVal = dataValue[i];
+          mergedValue[i] = Object.assign({}, fieldValue, curVal);
         }
+      } else {
+        mergedValue = {};
+        Object.assign(mergedValue, fieldValue, dataValue);
       }
 
-      return chosenValue;
+      if (data.choiceIndex != null) {
+        chosenValue = resolveChoice(data.choiceIndex, fieldChoices);
+        mergedValue = Object.assign(chosenValue, mergedValue);
+      }
+
+      return mergedValue;
     }
     that.getFieldValue = getFieldValue;
 
@@ -310,12 +307,22 @@ var exports = (function() {
      * Build drawing data for field type 'text'
      */
     function buildTextData(field, data, colorSchemes) {
-      var text = data == null ? '' : data.text;
+      var text = data == null ? '' : data.text
+        , font = field.font
+        ;
+
+      if (!font) {
+        var fontSz = data.fontSz
+          , fontFamily = field.fontFamily
+          ;
+
+        font = fontSz + 'px' + " '" + fontFamily + "'";
+      }
 
       return buildTextDataHelper(
         field.x,
         field.y,
-        field.font,
+        font,
         field.color,
         field.prefix,
         field.wrapAt,
