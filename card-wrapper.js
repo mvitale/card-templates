@@ -75,6 +75,11 @@ var exports = (function() {
     }
     that.height = height;
 
+    function id() {
+      return card.id;
+    }
+    that.id = id;
+
     function checkFieldNameTypeValid(name, type) {
       var field = checkFieldNameValid(name);
 
