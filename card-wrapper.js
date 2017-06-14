@@ -49,9 +49,13 @@ var exports = (function() {
     /*
      * Call all callbacks registered with this.change.
      */
-    function changeEvent() {
+    function changeEvent(field, rawData) {
       changeCbs.forEach(function(cb) {
-        cb();
+        cb({
+          field: field,
+          rawData: rawData,
+          resolvedData: getFieldValue(field)
+        });
       });
     }
 
@@ -71,27 +75,47 @@ var exports = (function() {
     }
     that.height = height;
 
+    function checkFieldNameTypeValid(name, type) {
+      var field = checkFieldNameValid(name);
+
+      if (field.type !== type) {
+        throw new Error('field not of required type');
+      }
+
+      return field;
+    }
+
     /*
      * True if this card's template contains a field with name <name> and
      * type <type>, false o/w.
      */
-    function checkFieldNameValid(name, type) {
+    function checkFieldNameValid(name) {
       // TODO: check this condition
-      if (!(name in template.fields) || template.fields[name].type !== type) {
+      if (!(name in template.fields)) {
         throw new Error('invalid field name');
       }
+
+      return fieldForId(name);
+    }
+
+    function dataForField(fieldId) {
+      var data = card.data[fieldId];
+
+      if (!data) {
+        data = {};
+        card.data[fieldId] = data;
+      }
+
+      return data;
     }
 
     /*
      * Set an attribute for a field, e.g., zoomLevel for an image field.
      */
     function setDataAttr(fieldName, attr, value) {
-      var data = card.data[fieldName];
-
-      if (!data) {
-        data = {};
-        card.data[fieldName] = data;
-      }
+      var field = checkFieldNameValid(fieldName)
+        , data = dataForField(fieldName)
+        ;
 
       if (!data.value) {
         data.value = {};
@@ -99,17 +123,35 @@ var exports = (function() {
 
       data.value[attr] = value;
 
-
-      changeEvent();
+      changeEvent(field, data);
     }
     that.setDataAttr = setDataAttr;
+
+    /*
+     * Set a choice index for a field. This deletes the data's value attribute
+     * if present.
+     */
+    function setChoiceIndex(fieldName, index) {
+      var field = checkFieldNameValid(fieldName)
+        , data = dataForField(fieldName)
+        ;
+
+      if ('value' in data) {
+        delete data.value;
+      }
+
+      data.choiceIndex = index;
+      changeEvent(field, data);
+    }
+    that.setChoiceIndex = setChoiceIndex;
 
     /*
      * Get the value of a data attribute for a field, or <defaultVal>
      * if it isn't set or is set to null.
      */
     function getDataAttr(fieldName, attr, defaultVal) {
-      var data = card.data[fieldName]
+      var field = checkFieldNameValid(fieldName)
+        , data = card.data[fieldName]
         , value = data ? data.value : null
         , attrVal = value ? value[attr] : null
         ;
@@ -133,9 +175,7 @@ var exports = (function() {
      * Get the drawing coordinates and dimensions for an 'image' field.
      */
     that.getImageLocation = function(fieldName) {
-      var field = template.fields[fieldName];
-
-      checkFieldNameValid(fieldName, 'image');
+      var field = checkFieldNameTypeValid(fieldName, 'image');
 
       return {
         x: field.x,
