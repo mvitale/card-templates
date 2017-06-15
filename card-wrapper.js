@@ -191,6 +191,15 @@ var exports = (function() {
     }
 
     /*
+     * Get the choice tips for a field
+     */
+    that.getFieldChoiceTips = function(fieldId) {
+      if (!card.choiceTips) return null;
+
+      return card.choiceTips[fieldId];
+    }
+
+    /*
      * Get the drawing coordinates and dimensions for an 'image' field.
      */
     that.getImageLocation = function(fieldName) {
