@@ -8,9 +8,6 @@
  * to draw the card to the Canvas instance.
  *
  * Parameters:
- *   where templateName is the name of a card template, and the result is that
- *   template's 'spec' value.
- *
  *   canvasSupplier - must implement canvasSupplier.supply(width, height), which
  *   returns a Canvas instance with the specified width and height.
  *
@@ -24,7 +21,7 @@
  * render, then draw to render the card to a Canvas.
  */
 (function() {
-  function RotatedImageCache() {
+  function RotatedImageCache(canvasSupplier) {
     var that = this
       , cache = {}
       ;
@@ -81,20 +78,17 @@
           , canvasHeight = calculateDimension(vectors.e1.y, vectors.e2.y, vectors.e3.y)
           , xScale = flipHoriz ? -1 : 1
           , yScale = flipVert  ? -1 : 1
+          , tmpCanvas = canvasSupplier.transformCanvas(canvasWidth, canvasHeight)
           ;
 
-        $tmpCanvas = $('<canvas>');
-        $tmpCanvas.attr('width', canvasWidth);
-        $tmpCanvas.attr('height', canvasHeight);
-
-        tmpCtx = $tmpCanvas[0].getContext('2d');
+        tmpCtx = tmpCanvas.getContext('2d');
 
         tmpCtx.translate(canvasWidth / 2, canvasHeight / 2);
         tmpCtx.rotate(theta);
         tmpCtx.scale(xScale, yScale);
         tmpCtx.drawImage(image, -imageWidth/2, -imageHeight/2);
 
-        that.canvas = $tmpCanvas[0];
+        that.canvas = tmpCanvas;
       }
     }
 
@@ -117,7 +111,7 @@
 
   function TemplateRenderer(canvasSupplier, imageFetcher) {
     var that = this
-      , rotatedImageCache = new RotatedImageCache()
+      , rotatedImageCache = new RotatedImageCache(canvasSupplier)
       ;
 
     function resolveImage(url, cb) {
@@ -177,7 +171,7 @@
       resolveImages(drawingData, function(err, urlsToImages) {
         // Moving this to just before drawing seems to prevent flickering on
         // redraw
-        canvas = canvasSupplier.supply(card.width(), card.height());
+        canvas = canvasSupplier.drawingCanvas(card.width(), card.height());
         ctx = canvas.getContext('2d');
 
         try {
