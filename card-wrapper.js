@@ -6,12 +6,17 @@
 var exports = (function() {
   var exports = {};
 
-  var templateSupplier = null
+  var templateSupplier
+    , dataPersistence
     ;
 
   exports.setTemplateSupplier = function(supplier) {
     templateSupplier = supplier;
   };
+
+  exports.setDataPersistence = function(persistence) {
+    dataPersistence = persistence;
+  }
 
   exports.newInstance = function(card, cb) {
     if (!templateSupplier) {
@@ -32,6 +37,8 @@ var exports = (function() {
       , template = template
       , that = this
       , changeCbs = []
+      , dirtyChangeCbs = []
+      , dirty = false
       ;
 
     var defaultZoomLevel = 0
@@ -47,9 +54,11 @@ var exports = (function() {
     that.change = change;
 
     /*
-     * Call all callbacks registered with this.change.
+     * Call all callbacks registered with this.change and set dirty flag to true.
      */
     function changeEvent(field, rawData) {
+      setDirty(true);
+
       changeCbs.forEach(function(cb) {
         cb({
           field: field,
@@ -79,6 +88,11 @@ var exports = (function() {
       return card.id;
     }
     that.id = id;
+
+    function isDirty() {
+      return dirty;
+    }
+    that.isDirty = isDirty;
 
     function checkFieldNameTypeValid(name, type) {
       var field = checkFieldNameValid(name);
@@ -616,6 +630,39 @@ var exports = (function() {
       return drawingData;
     }
     that.buildDrawingData = buildDrawingData;
+
+    function save(cb) {
+      if (!dataPersistence) {
+        return cb(new Error('Data persistence not set'));
+      }
+
+      dataPersistence.save(card, function(err) {
+        if (err) return cb(err);
+
+        setDirty(false);
+
+        cb();
+      });
+    }
+    that.save = save;
+
+    function setDirty(newVal) {
+      if (dirty !== newVal) {
+        dirty = newVal;
+        fireDirtyChange();
+      }
+    }
+
+    function dirtyChange(cb) {
+      dirtyChangeCbs.push(cb);
+    }
+    that.dirtyChange = dirtyChange;
+
+    function fireDirtyChange(cb) {
+      dirtyChangeCbs.forEach(function(cb) {
+        cb(dirty);
+      });
+    }
   }
 
   return exports;
