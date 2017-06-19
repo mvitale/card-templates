@@ -177,6 +177,21 @@ var exports = (function() {
     }
     that.setChoiceIndex = setChoiceIndex;
 
+    function wipeData(fieldName) {
+      var field = checkFieldNameValid(fieldName)
+        , data = dataForField(fieldName)
+        ;
+
+      if ('value' in data) {
+        delete data.value;
+      }
+
+      if ('choiceIndex' in data) {
+        delete data.choiceIndex;
+      }
+    }
+    that.wipeData = wipeData;
+
 
     /*
      * Get choiceIndex for a field (if present)
