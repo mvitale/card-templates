@@ -169,6 +169,8 @@
       // Resolve images up-front to prevent flickering due to loading delay in
       // the middle of drawing to the canvas
       resolveImages(drawingData, function(err, urlsToImages) {
+        if (err) return cb(err);
+
         // Moving this to just before drawing seems to prevent flickering on
         // redraw
         canvas = canvasSupplier.drawingCanvas(card.width(), card.height());

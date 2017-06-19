@@ -165,6 +165,22 @@ var exports = (function() {
     that.setChoiceIndex = setChoiceIndex;
 
     /*
+     * Get choiceIndex for a field (if present)
+     */
+    function getChoiceIndex(fieldName, defaultVal) {
+      var data = dataForField(fieldName)
+        , choiceIndex = data.choiceIndex
+        ;
+
+      if (choiceIndex == null) { // null or undefined, not 0
+        choiceIndex = defaultVal;
+      }
+
+      return choiceIndex;
+    }
+    that.getChoiceIndex = getChoiceIndex;
+
+    /*
      * Get the value of a data attribute for a field, or <defaultVal>
      * if it isn't set or is set to null.
      */
@@ -469,7 +485,9 @@ var exports = (function() {
         results.push(buildTextData(field.credit, data.credit, colorSchemes));
       }
 
-      results.push(buildImageDataHelper(field, data));
+      if (data.url) {
+        results.push(buildImageDataHelper(field, data));
+      }
 
       return results;
     }
