@@ -147,6 +147,19 @@ var exports = (function() {
     that.setDataAttr = setDataAttr;
 
     /*
+     * Special setters for key-val-list data
+     */
+    function setKeyValText(fieldName, keyOrVal, index, value) {
+      var field = checkFieldNameValid(fieldName)
+        , data = dataForField(fieldName)
+        ;
+
+      data.value[index][keyOrVal].text = value;
+      changeEvent(field, data);
+    }
+    that.setKeyValText = setKeyValText;
+
+    /*
      * Set a choice index for a field. This deletes the data's value attribute
      * if present.
      */
@@ -163,6 +176,7 @@ var exports = (function() {
       changeEvent(field, data);
     }
     that.setChoiceIndex = setChoiceIndex;
+
 
     /*
      * Get choiceIndex for a field (if present)
@@ -546,12 +560,15 @@ var exports = (function() {
         , offsetField = null
         , yOffset = 0
         , results = []
+        , filteredData = data.filter(function(datum) {
+            return datum.key.text || datum.val.text;
+          })
         ;
 
-      for (var i = 0; i < data.length; i++) {
+      for (var i = 0; i < filteredData.length; i++) {
         // Build data for key-val element, setting the y value according
         // to the field's yIncr and y values
-        curData = data[i];
+        curData = filteredData[i];
 
         yOffset = i * field.yIncr + field.y;
         offsetField = Object.assign({}, field.keyValSpec);
@@ -594,9 +611,6 @@ var exports = (function() {
           break;
         case 'text':
           results = [buildTextData(field, data, colorSchemes)];
-          break;
-        case 'key-val-text':
-          results = buildKeyValTextData(field, data, colorSchemes);
           break;
         case 'image':
         case 'labeled-choice-image':
