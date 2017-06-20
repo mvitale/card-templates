@@ -146,6 +146,32 @@ var exports = (function() {
     }
     that.setDataAttr = setDataAttr;
 
+    function setMetaData(fieldName, attr, value) {
+      var field = checkFieldNameValid(fieldName)
+        , data  = dataForField(fieldName)
+        ;
+
+      if (!data.meta) {
+        data.meta = {};
+      }
+
+      data.meta[attr] = value;
+    }
+    that.setMetaData = setMetaData;
+
+    function getMetaData(fieldName, attr) {
+      var data = dataForField(fieldName)
+        , val = null
+        ;
+
+      if (data && data.meta) {
+        val = data.meta[attr];
+      }
+
+      return val;
+    }
+    that.getMetaData = getMetaData;
+
     /*
      * Special setters for key-val-list data
      */
