@@ -33,13 +33,15 @@ var exports = (function() {
   };
 
   function CardWrapper(card, template) {
-    var card = card
-      , template = template
-      , that = this
+    var that = this
       , changeCbs = []
       , dirtyChangeCbs = []
       , dirty = false
       ;
+
+    if (!card.userData) {
+      card.userData = {};
+    }
 
     var defaultZoomLevel = 0
       ;
@@ -57,14 +59,16 @@ var exports = (function() {
      * Call all callbacks registered with this.change and set dirty flag to true.
      */
     function changeEvent(field, rawData) {
+      var e = {
+        field: field,
+        rawData: rawData,
+        resolvedData: getFieldValue(field)
+      };
+
       setDirty(true);
 
       changeCbs.forEach(function(cb) {
-        cb({
-          field: field,
-          rawData: rawData,
-          resolvedData: getFieldValue(field)
-        });
+        cb(e);
       });
     }
 
@@ -117,15 +121,42 @@ var exports = (function() {
       return fieldForId(name);
     }
 
-    function dataForField(fieldId) {
-      var data = card.data[fieldId];
+    function dataForFieldHelper(fieldId, key, forceNew) {
+      var data = card[key][fieldId];
 
-      if (!data) {
+      if (!data || forceNew) {
         data = {};
-        card.data[fieldId] = data;
+        card[key][fieldId] = data;
       }
 
       return data;
+    }
+
+    function userDataForField(fieldId) {
+      return dataForFieldHelper(fieldId, 'userData', false);
+    }
+
+    function dataForField(fieldId) {
+      return dataForFieldHelper(fieldId, 'data', false);
+    }
+
+    function getDataValue(fieldName) {
+      var field = checkFieldNameValid(fieldName)
+        , fieldData = dataForField(fieldName)
+        , value
+        ;
+
+      if (fieldData.userDataKey) {
+        value = userDataForField(fieldName)[fieldData.userDataKey];
+      } else  {
+        if (!fieldData.value) {
+          fieldData.value = {};
+        }
+
+        value = fieldData.value;
+      }
+
+      return value;
     }
 
     /*
@@ -133,44 +164,41 @@ var exports = (function() {
      */
     function setDataAttr(fieldName, attr, value) {
       var field = checkFieldNameValid(fieldName)
-        , data = dataForField(fieldName)
+        , dataToModify = getDataValue(fieldName)
         ;
 
-      if (!data.value) {
-        data.value = {};
-      }
+      dataToModify[attr] = value;
 
-      data.value[attr] = value;
-
-      changeEvent(field, data);
+      changeEvent(field, dataToModify);
     }
     that.setDataAttr = setDataAttr;
 
-    function setMetaData(fieldName, attr, value) {
+    function setUserDataRef(fieldName, key) {
       var field = checkFieldNameValid(fieldName)
-        , data  = dataForField(fieldName)
-        ;
+        , data = wipeData(fieldName);
+      data.userDataKey = key;
 
-      if (!data.meta) {
-        data.meta = {};
-      }
-
-      data.meta[attr] = value;
+      changeEvent(field, data);
     }
-    that.setMetaData = setMetaData;
+    that.setUserDataRef = setUserDataRef;
 
-    function getMetaData(fieldName, attr) {
-      var data = dataForField(fieldName)
-        , val = null
+    function setUserData(fieldName, key, value) {
+      var field = checkFieldNameValid(fieldName)
+        , userData = userDataForField(fieldName);
         ;
 
-      if (data && data.meta) {
-        val = data.meta[attr];
-      }
+      userData[key] = value;
+    }
+    that.setUserData = setUserData;
+
+    function getUserData(fieldName, key) {
+      var userData = userDataForField(fieldName)
+        , val = userData[key]
+        ;
 
       return val;
     }
-    that.getMetaData = getMetaData;
+    that.getUserData = getUserData;
 
     /*
      * Special setters for key-val-list data
@@ -204,20 +232,10 @@ var exports = (function() {
     that.setChoiceIndex = setChoiceIndex;
 
     function wipeData(fieldName) {
-      var field = checkFieldNameValid(fieldName)
-        , data = dataForField(fieldName)
-        ;
-
-      if ('value' in data) {
-        delete data.value;
-      }
-
-      if ('choiceIndex' in data) {
-        delete data.choiceIndex;
-      }
+      var data = dataForFieldHelper(fieldName, 'data', true);
+      return data;
     }
     that.wipeData = wipeData;
-
 
     /*
      * Get choiceIndex for a field (if present)
@@ -241,8 +259,7 @@ var exports = (function() {
      */
     function getDataAttr(fieldName, attr, defaultVal) {
       var field = checkFieldNameValid(fieldName)
-        , data = card.data[fieldName]
-        , value = data ? data.value : null
+        , value = getFieldValue(field)
         , attrVal = value ? value[attr] : null
         ;
 
@@ -359,9 +376,8 @@ var exports = (function() {
     function getFieldValue(field) {
       var fieldValue = field.value || {}
         , fieldChoices = card.choices[field.id]
-        , data = card.data[field.id] || {}
-        , dataValue = data.value || {}
-        , dataSrc = null
+        , dataValue = getDataValue(field.id)
+        , choiceIndex = getChoiceIndex(field.id)
         , chosenValue = null
         , mergedValue
         , curVal
@@ -379,8 +395,8 @@ var exports = (function() {
         Object.assign(mergedValue, fieldValue, dataValue);
       }
 
-      if (data.choiceIndex != null) {
-        chosenValue = resolveChoice(data.choiceIndex, fieldChoices);
+      if (choiceIndex != null) {
+        chosenValue = resolveChoice(choiceIndex, fieldChoices);
         mergedValue = Object.assign(chosenValue, mergedValue);
       }
 
