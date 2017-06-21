@@ -62,7 +62,7 @@ var exports = (function() {
       var e = {
         field: field,
         rawData: rawData,
-        resolvedData: getFieldValue(field)
+        resolvedData: resolvedFieldData(field)
       };
 
       setDirty(true);
@@ -93,6 +93,9 @@ var exports = (function() {
     }
     that.id = id;
 
+    /*
+     * True if there are unsaved changes, false o/w
+     */
     function isDirty() {
       return dirty;
     }
@@ -132,14 +135,26 @@ var exports = (function() {
       return data;
     }
 
+    /*
+     * Get card.userData[fieldId], defaulting to {} if not already present
+     */
     function userDataForField(fieldId) {
       return dataForFieldHelper(fieldId, 'userData', false);
     }
 
+    /*
+     * Get card.data[fieldId], defaulting to {} if not already present
+     */
     function dataForField(fieldId) {
       return dataForFieldHelper(fieldId, 'data', false);
     }
 
+    /*
+     * Get the object on which data attributes should be set.
+     * If a userDataKey is set, the userData object to which it refers is returned.
+     * Otherwise, card.data[fieldName].value is returned, defaulting to {} if not already
+     * present.
+     */
     function getDataValue(fieldName) {
       var field = checkFieldNameValid(fieldName)
         , fieldData = dataForField(fieldName)
@@ -173,6 +188,9 @@ var exports = (function() {
     }
     that.setDataAttr = setDataAttr;
 
+    /*
+     * Set a field's data to refer to a user data object
+     */
     function setUserDataRef(fieldName, key) {
       var field = checkFieldNameValid(fieldName)
         , data = wipeData(fieldName);
@@ -182,29 +200,44 @@ var exports = (function() {
     }
     that.setUserDataRef = setUserDataRef;
 
+    /*
+     * Get the user data key to which a field's data object refers, or
+     * undefined if not present.
+     */
     function getUserDataRef(fieldName) {
       var data = dataForField(fieldName);
       return data.userDataKey;
     }
     that.getUserDataRef = getUserDataRef;
 
-    function setUserData(fieldName, key, value) {
+    /*
+     * Set an attribute on a field's user data bucket.
+     */
+    function setUserDataAttr(fieldName, bucket, key, value) {
       var field = checkFieldNameValid(fieldName)
         , userData = userDataForField(fieldName);
         ;
 
-      userData[key] = value;
-    }
-    that.setUserData = setUserData;
+      if (!userData[bucket]) {
+        userData[bucket] = {};
+      }
 
-    function getUserData(fieldName, key) {
+      userData[bucket][key] = value;
+    }
+    that.setUserDataAttr = setUserDataAttr;
+
+    /*
+     * Get an attribute from a field's user data bucket.
+     */
+    function getUserDataAttr(fieldName, bucket, key) {
       var userData = userDataForField(fieldName)
-        , val = userData[key]
+        , bucketVal = userData[bucket]
+        , val = bucketVal ? bucketVal[key] : null
         ;
 
       return val;
     }
-    that.getUserData = getUserData;
+    that.getUserDataAttr = getUserDataAttr;
 
     /*
      * Special setters for key-val-list data
@@ -233,6 +266,9 @@ var exports = (function() {
     }
     that.setChoiceIndex = setChoiceIndex;
 
+    /*
+     * Wipe a field's data (set to {}).
+     */
     function wipeData(fieldName) {
       var data = dataForFieldHelper(fieldName, 'data', true);
       return data;
@@ -261,7 +297,7 @@ var exports = (function() {
      */
     function getDataAttr(fieldName, attr, defaultVal) {
       var field = checkFieldNameValid(fieldName)
-        , value = getFieldValue(field)
+        , value = resolvedFieldData(field)
         , attrVal = value ? value[attr] : null
         ;
 
@@ -375,7 +411,7 @@ var exports = (function() {
      * Get a field's data value. If a field has a choiceIndex and a value,
      * merge the value into the resolved choice(s).
      */
-    function getFieldValue(field) {
+    function resolvedFieldData(field) {
       var fieldValue = field.value || {}
         , fieldChoices = card.choices[field.id]
         , dataValue = getDataValue(field.id)
@@ -404,7 +440,7 @@ var exports = (function() {
 
       return mergedValue;
     }
-    that.getFieldValue = getFieldValue;
+    that.resolvedFieldData = resolvedFieldData;
 
     /*
      * Resolve a color scheme reference in a field's data value. Color scheme
@@ -692,7 +728,7 @@ var exports = (function() {
       var colorSchemes = {};
 
       colorSchemeFields.forEach(function(field) {
-        var colorScheme = getFieldValue(field);
+        var colorScheme = resolvedFieldData(field);
         colorSchemes[field.id] = colorScheme;
       });
 
@@ -721,7 +757,7 @@ var exports = (function() {
       colorSchemes = buildColorSchemes(colorSchemeFields);
 
       otherFields.forEach(function(field) {
-        var chosenValue = getFieldValue(field)
+        var chosenValue = resolvedFieldData(field)
           , fieldDatas = buildDataForField(field, chosenValue, colorSchemes)
 
         drawingData = drawingData.concat(fieldDatas);
