@@ -182,6 +182,12 @@ var exports = (function() {
     }
     that.setUserDataRef = setUserDataRef;
 
+    function getUserDataRef(fieldName) {
+      var data = dataForField(fieldName);
+      return data.userDataKey;
+    }
+    that.getUserDataRef = getUserDataRef;
+
     function setUserData(fieldName, key, value) {
       var field = checkFieldNameValid(fieldName)
         , userData = userDataForField(fieldName);
@@ -219,12 +225,8 @@ var exports = (function() {
      */
     function setChoiceIndex(fieldName, index) {
       var field = checkFieldNameValid(fieldName)
-        , data = dataForField(fieldName)
+        , data = wipeData(fieldName)
         ;
-
-      if ('value' in data) {
-        delete data.value;
-      }
 
       data.choiceIndex = index;
       changeEvent(field, data);
