@@ -717,6 +717,9 @@ var exports = (function() {
         case 'key-val-list':
           results = buildKeyValListData(field, data, colorSchemes);
           break;
+        case 'multiline-text':
+          results = [];
+          break;
         default:
           throw new Error('Invalid field type: ' + field.type);
       }
