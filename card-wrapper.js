@@ -705,6 +705,7 @@ var exports = (function() {
           results = [buildLineData(field, colorSchemes)];
           break;
         case 'text':
+        case 'multiline-text':
           results = [buildTextData(field, data, colorSchemes)];
           break;
         case 'image':
@@ -716,9 +717,6 @@ var exports = (function() {
           break;
         case 'key-val-list':
           results = buildKeyValListData(field, data, colorSchemes);
-          break;
-        case 'multiline-text':
-          results = [];
           break;
         default:
           throw new Error('Invalid field type: ' + field.type);
