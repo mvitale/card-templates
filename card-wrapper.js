@@ -500,7 +500,7 @@ var exports = (function() {
      * Build drawing data for field type 'text'
      */
     function buildTextData(field, data, colorSchemes) {
-      var text = data == null ? '' : data.text
+      var text = data == null || data.text == null ? '' : data.text
         , font = field.font
         ;
 
