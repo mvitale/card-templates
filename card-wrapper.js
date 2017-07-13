@@ -58,14 +58,16 @@ var exports = (function() {
     /*
      * Call all callbacks registered with this.change and set dirty flag to true.
      */
-    function changeEvent(field, rawData) {
+    function changeEvent(field, rawData, notDirty) {
       var e = {
         field: field,
         rawData: rawData,
         resolvedData: resolvedFieldData(field)
       };
 
-      setDirty(true);
+      if (!notDirty) {
+        setDirty(true);
+      }
 
       changeCbs.forEach(function(cb) {
         cb(e);
@@ -178,15 +180,43 @@ var exports = (function() {
      * Set an attribute for a field, e.g., zoomLevel for an image field.
      */
     function setDataAttr(fieldName, attr, value) {
-      var field = checkFieldNameValid(fieldName)
-        , dataToModify = getDataValue(fieldName)
-        ;
-
-      dataToModify[attr] = value;
-
-      changeEvent(field, dataToModify);
+      setDataAttrHelper(fieldName, attr, value, false);
     }
     that.setDataAttr = setDataAttr;
+
+    /*
+     * Same as setDataAttr, except this version does not cause a dirtyChange
+     * event to be fired. This should be used when the caller
+     * intends to revert the card to the state it was in before this method
+     * was called, e.g., in the card editor when the user hovers over a font
+     * size.
+     */
+    function setDataAttrNotDirty(fieldName, attr, value) {
+      setDataAttrHelper(fieldName, attr, value, true);
+    }
+    that.setDataAttrNotDirty = setDataAttrNotDirty;
+
+    /*
+     * Force card to dirty state, fire dirtyChange event if applicable. Can be
+     * used to finalize a value set by setDataAttrNotDirty for preview
+     * purposes.
+     */
+    function forceDirty() {
+      setDirty(true);
+    }
+    that.forceDirty = forceDirty;
+
+    function setDataAttrHelper(fieldName, attr, value, notDirty) {
+      var field = checkFieldNameValid(fieldName)
+        , dataToModify = getDataValue(fieldName)
+        , curValue = dataToModify[attr]
+        ;
+
+      if (curValue !== value) {
+        dataToModify[attr] = value;
+        changeEvent(field, dataToModify, notDirty);
+      }
+    }
 
     /*
      * Set a field's data to refer to a user data object
