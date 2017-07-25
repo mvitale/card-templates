@@ -124,7 +124,7 @@
       if (logger) {
         logger.error(error);
       } else {
-        console.err(error);
+        console.error(error);
       }
     }
 
