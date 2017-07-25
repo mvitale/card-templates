@@ -532,14 +532,25 @@ var exports = (function() {
     function buildTextData(field, data, colorSchemes) {
       var text = data == null || data.text == null ? '' : data.text
         , font = field.font
+        , fontParts = []
+        , fontSz
+        , fontFamily
+        , fontStyle
         ;
 
       if (!font) {
-        var fontSz = data.fontSz
-          , fontFamily = field.fontFamily
-          ;
+        fontSz = data.fontSz;
+        fontFamily = field.fontFamily;
+        fontStyle = field.fontStyle;
 
-        font = fontSz + 'px' + " '" + fontFamily + "'";
+        if (fontStyle) {
+          fontParts.push(fontStyle);
+        }
+
+        fontParts.push(fontSz + 'px');
+        fontParts.push(fontFamily);
+
+        font = fontParts.join(' ');
       }
 
       return buildTextDataHelper(
