@@ -112,7 +112,21 @@
   function TemplateRenderer(canvasSupplier, imageFetcher) {
     var that = this
       , rotatedImageCache = new RotatedImageCache(canvasSupplier)
+      , logger
       ;
+
+    function setLogger(theLogger) {
+      logger = theLogger;
+    }
+    that.setLogger = setLogger;
+
+    function logError(error) {
+      if (logger) {
+        logger.error(error);
+      } else {
+        console.err(error);
+      }
+    }
 
     function resolveImage(url, cb) {
       return imageFetcher.fetch(url, cb);
@@ -128,7 +142,9 @@
       imageData = imageDatas.pop();
 
       resolveImage(imageData.url, function(err, image) {
-        if (err) return cb(err);
+        if (err) {
+          logError(err);
+        }
 
         urlsToImages[imageData.url] = image;
         resolveImagesHelper(imageDatas, urlsToImages, cb);
@@ -281,6 +297,10 @@
     }
 
     function drawImage(ctx, data, image) {
+      if (!image) {
+        return; // It's possible that an image failed to resolve. It will have been logged there, so just fail silently.
+      }
+
       var targetRatio = (data.width * 1.0) / data.height
         , imageHeight = typeof(image.naturalHeight) === "undefined" ?
             image.height :
