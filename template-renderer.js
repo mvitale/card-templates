@@ -236,8 +236,13 @@
         , lineX = data.x
         , curY = data.y
         , curWord = null
-        , curText = null
+        , nextWord = null
         , newLine = false
+        , sepIndex
+        , curWord
+        , firstWord
+        , remaining
+        , xIncr
         , value = data.text
         , x = data.x
         , y = data.y
@@ -263,28 +268,38 @@
 
         ctx.fillText(value, x, y);
       } else {
-        wordStack = value.split(' ').reverse();
+        remaining = value.slice(0);
+        firstWord = true;
 
-        if (wordStack.length === 0) {
-          return;
-        }
+        while (remaining.length) {
+          sepIndex = remaining.search(/[\n\s]/);
 
-        curWord = wordStack.pop();
-        ctx.fillText(curWord, x, y);
-        lineX += ctx.measureText(curWord, x, y).width;
-
-        while (wordStack.length > 0) {
-          curWord = wordStack.pop();
-          curText = ' ' + curWord;
-          newX = ctx.measureText(curText).width + lineX;
-
-          if (newX <= data.wrapAt) {
-            ctx.fillText(curText, lineX, curY);
-            lineX = newX;
+          if (sepIndex > 0) {
+            curWord = remaining.slice(0, sepIndex);
+            remaining = remaining.slice(sepIndex);
+          } else if (sepIndex === 0) {
+            curWord = remaining.charAt(0);
+            remaining = remaining.slice(1); // returns '' if nothing left
           } else {
+            curWord = remaining;
+            remaining = '';
+          }
+
+          if (curWord !== '\n') {
+            xIncr = ctx.measureText(curWord).width;
+
+            if (xIncr + lineX > data.wrapAt && !firstWord) {
+              lineX = x;
+              curY += fontSizePx(ctx) * fontSizeLineHeightMultiplier;
+            }
+
+            ctx.fillText(curWord, lineX, curY);
+            lineX += xIncr;
+            firstWord = false;
+          } else {
+            lineX = x;
             curY += fontSizePx(ctx) * fontSizeLineHeightMultiplier;
-            ctx.fillText(curWord, x, curY);
-            lineX = ctx.measureText(curWord).width + x;
+            firstWord = true;
           }
         }
       }
