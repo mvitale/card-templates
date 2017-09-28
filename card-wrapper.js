@@ -28,16 +28,12 @@ var exports = (function() {
         return cb(err);
       }
 
-      return cb(null, new CardWrapper(card, template));
+      return cb(null, new CardWrapper(card, template, false));
     });
   };
 
-  function CardWrapper(card, template) {
-    var that = this
-      , changeCbs = []
-      , dirtyChangeCbs = []
-      , dirty = false
-      ;
+  function CardWrapper(card, template, dirty) {
+    var that = this;
 
     if (!card.userData) {
       card.userData = {};
@@ -45,34 +41,6 @@ var exports = (function() {
 
     var defaultZoomLevel = 0
       ;
-
-    /*
-     * Register a callback to be called when data is changed. No arguments
-     * are passed to the callback.
-     */
-    function change(cb) {
-      changeCbs.push(cb);
-    }
-    that.change = change;
-
-    /*
-     * Call all callbacks registered with this.change and set dirty flag to true.
-     */
-    function changeEvent(field, rawData, notDirty) {
-      var e = {
-        field: field,
-        rawData: rawData,
-        resolvedData: resolvedFieldData(field)
-      };
-
-      if (!notDirty) {
-        setDirty(true);
-      }
-
-      changeCbs.forEach(function(cb) {
-        cb(e);
-      });
-    }
 
     /*
      * Get the width of this card, as specified in its template
@@ -185,11 +153,10 @@ var exports = (function() {
     that.setDataAttr = setDataAttr;
 
     /*
-     * Same as setDataAttr, except this version does not cause a dirtyChange
-     * event to be fired. This should be used when the caller
-     * intends to revert the card to the state it was in before this method
-     * was called, e.g., in the card editor when the user hovers over a font
-     * size.
+     * Same as setDataAttr, except this version does not cause a change in dirty
+     * state. This should be used when the caller intends to revert the card to
+     * the state it was in before this method was called, e.g., in the card
+     * editor when the user hovers over a font size.
      */
     function setDataAttrNotDirty(fieldName, attr, value) {
       setDataAttrHelper(fieldName, attr, value, true);
@@ -197,7 +164,7 @@ var exports = (function() {
     that.setDataAttrNotDirty = setDataAttrNotDirty;
 
     /*
-     * Force card to dirty state, fire dirtyChange event if applicable. Can be
+     * Force card to dirty state. Can be
      * used to finalize a value set by setDataAttrNotDirty for preview
      * purposes.
      */
@@ -214,8 +181,9 @@ var exports = (function() {
 
       if (curValue !== value) {
         dataToModify[attr] = value;
-        changeEvent(field, dataToModify, notDirty);
       }
+
+      setDirty(isDirty() || !notDirty);
     }
 
     /*
@@ -225,8 +193,7 @@ var exports = (function() {
       var field = checkFieldNameValid(fieldName)
         , data = wipeData(fieldName);
       data.userDataKey = key;
-
-      changeEvent(field, data);
+      setDirty(true);
     }
     that.setUserDataRef = setUserDataRef;
 
@@ -278,7 +245,7 @@ var exports = (function() {
         ;
 
       data.value[index][keyOrVal].text = value;
-      changeEvent(field, data);
+      setDirty(true);
     }
     that.setKeyValText = setKeyValText;
 
@@ -292,7 +259,7 @@ var exports = (function() {
         ;
 
       data.choiceIndex = index;
-      changeEvent(field, data);
+      setDirty(true);
     }
     that.setChoiceIndex = setChoiceIndex;
 
@@ -816,30 +783,27 @@ var exports = (function() {
 
       dataPersistence.save(card, function(err) {
         if (err) return cb(err);
-
         setDirty(false);
-
         cb();
       });
     }
     that.save = save;
 
+    function getTemplateParam(key) {
+      return card.templateParams[key];
+    }
+    that.getTemplateParam = getTemplateParam;
+
+    function clone() {
+      var cardClone = JSON.parse(JSON.stringify(card));
+      return new CardWrapper(cardClone, template, isDirty());
+    }
+    that.clone = clone;
+
     function setDirty(newVal) {
       if (dirty !== newVal) {
         dirty = newVal;
-        fireDirtyChange();
       }
-    }
-
-    function dirtyChange(cb) {
-      dirtyChangeCbs.push(cb);
-    }
-    that.dirtyChange = dirtyChange;
-
-    function fireDirtyChange(cb) {
-      dirtyChangeCbs.forEach(function(cb) {
-        cb(dirty);
-      });
     }
   }
 
