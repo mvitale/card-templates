@@ -306,20 +306,29 @@ var exports = (function() {
     }
     that.getDataAttr = getDataAttr;
 
+    function templateOrCardFieldData(bucket, fieldId) {
+      var result = null;
+      if (template[bucket] && fieldId in template[bucket]) {
+        result = template[bucket][fieldId];
+      } else if (card[bucket] && fieldId in card[bucket]) {
+        result = card[bucket][fieldId];
+      }
+
+      return result;
+    }
+
     /*
      * Get the list of default choices for a field.
      */
     that.getFieldChoices = function(fieldId) {
-      return card.choices[fieldId];
+      return templateOrCardFieldData('choices', fieldId);
     }
 
     /*
      * Get the choice tips for a field
      */
     that.getFieldChoiceTips = function(fieldId) {
-      if (!card.choiceTips) return null;
-
-      return card.choiceTips[fieldId];
+      return templateOrCardFieldData('choiceTips', fieldId);
     }
 
     /*
@@ -410,7 +419,7 @@ var exports = (function() {
      */
     function resolvedFieldData(field) {
       var fieldValue = field.value || {}
-        , fieldChoices = card.choices[field.id]
+        , fieldChoices = that.getFieldChoices(field.id)
         , dataValue = getDataValue(field.id)
         , choiceIndex = getChoiceIndex(field.id)
         , chosenValue = null
