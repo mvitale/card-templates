@@ -244,7 +244,7 @@ var exports = (function() {
         , data = dataForField(fieldName)
         ;
 
-      data.value[index][keyOrVal] = value;
+      data.value[index][keyOrVal].text = value;
       setDirty(true);
     }
     that.setKeyValText = setKeyValText;
