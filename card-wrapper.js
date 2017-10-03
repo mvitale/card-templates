@@ -253,15 +253,15 @@ var exports = (function() {
      * Set a choice index for a field. This deletes the data's value attribute
      * if present.
      */
-    function setChoiceIndex(fieldName, index) {
+    function setChoiceKey(fieldName, key) {
       var field = checkFieldNameValid(fieldName)
         , data = wipeData(fieldName)
         ;
 
-      data.choiceIndex = index;
+      data.choiceKey = index;
       setDirty(true);
     }
-    that.setChoiceIndex = setChoiceIndex;
+    that.setChoiceKey = setChoiceKey;
 
     /*
      * Wipe a field's data (set to {}).
@@ -273,20 +273,16 @@ var exports = (function() {
     that.wipeData = wipeData;
 
     /*
-     * Get choiceIndex for a field (if present)
+     * Get choiceKey for a field (if present)
      */
-    function getChoiceIndex(fieldName, defaultVal) {
+    function getChoiceKey(fieldName, defaultVal) {
       var data = dataForField(fieldName)
-        , choiceIndex = data.choiceIndex
+        , choiceKey = data.choiceKey
         ;
 
-      if (choiceIndex == null) { // null or undefined, not 0
-        choiceIndex = defaultVal;
-      }
-
-      return choiceIndex;
+      return choiceKey;
     }
-    that.getChoiceIndex = getChoiceIndex;
+    that.getChoiceKey = getChoiceKey;
 
     /*
      * Get the value of a data attribute for a field, or <defaultVal>
@@ -322,6 +318,25 @@ var exports = (function() {
      */
     that.getFieldChoices = function(fieldId) {
       return templateOrCardFieldData('choices', fieldId);
+    }
+
+    /*
+     * Object { [choiceKey1]: choice1, ..., [choiceKeyN]: choiceN}
+     */
+    getFieldChoicesMap = function(fieldId) {
+      var choiceList = that.getFieldChoices(fieldId)
+        , result = {}
+        , curChoice
+        ;
+
+      if (choiceList) {
+        for (var i = 0; i < choiceList.length; i++) {
+          curChoice = choiceList[i];
+          result[curChoice.choiceKey] = curChoice;
+        }
+      }
+
+      return result;
     }
 
     /*
@@ -393,35 +408,35 @@ var exports = (function() {
     that.imageFields = imageFields;
 
     /*
-     * Given a choiceIndex and a list of fieldChoices, return the corresponding
-     * value(s). choiceIndex may be a number or an Array. In the latter case,
+     * Given a choiceKey and a map of fieldChoices, return the corresponding
+     * value(s). choiceKey may be a number, string or Array. In the latter case,
      * a list of values is returned.
      */
-    function resolveChoice(choiceIndex, fieldChoices) {
+    function resolveChoice(choiceKey, fieldChoices) {
       var chosenValue = null;
 
-      if (typeof choiceIndex === 'number') {
-        chosenValue = fieldChoices[choiceIndex];
-      } else if (Array.isArray(choiceIndex)) { // Assume array of indices
+      if (Array.isArray(choiceKey)) {
         chosenValue = [];
 
-        choiceIndex.forEach(function(index) {
+        choiceKey.forEach(function(index) {
          chosenValue.push(fieldChoices[index]);
         });
+      } else {
+        chosenValue = fieldChoices[choiceKey];
       }
 
       return chosenValue;
     }
 
     /*
-     * Get a field's data value. If a field has a choiceIndex and a value,
+     * Get a field's data value. If a field has a choiceKey and a value,
      * merge the value into the resolved choice(s).
      */
     function resolvedFieldData(field) {
       var fieldValue = field.value || {}
-        , fieldChoices = that.getFieldChoices(field.id)
+        , fieldChoices = getFieldChoicesMap(field.id)
         , dataValue = getDataValue(field.id)
-        , choiceIndex = getChoiceIndex(field.id)
+        , choiceKey = getChoiceKey(field.id)
         , chosenValue = null
         , mergedValue
         , curVal
@@ -439,8 +454,8 @@ var exports = (function() {
         Object.assign(mergedValue, fieldValue, dataValue);
       }
 
-      if (choiceIndex != null) {
-        chosenValue = resolveChoice(choiceIndex, fieldChoices);
+      if (choiceKey != null) {
+        chosenValue = resolveChoice(choiceKey, fieldChoices);
         mergedValue = Object.assign(chosenValue, mergedValue);
       }
 
