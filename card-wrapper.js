@@ -46,7 +46,7 @@ var exports = (function() {
      * Get the width of this card, as specified in its template
      */
     function width() {
-      return template.width;
+      return template.spec.width;
     }
     that.width = width;
 
@@ -54,7 +54,7 @@ var exports = (function() {
      * Get the height of this card, as specified in its template.
      */
     function height() {
-      return template.height;
+      return template.spec.height;
     }
     that.height = height;
 
@@ -87,7 +87,7 @@ var exports = (function() {
      */
     function checkFieldNameValid(name) {
       // TODO: check this condition
-      if (!(name in template.fields)) {
+      if (!(name in template.spec.fields)) {
         throw new Error('invalid field name');
       }
 
@@ -244,7 +244,7 @@ var exports = (function() {
         , data = dataForField(fieldName)
         ;
 
-      data.value[index][keyOrVal].text = value;
+      data.value[index][keyOrVal] = value;
       setDirty(true);
     }
     that.setKeyValText = setKeyValText;
@@ -350,7 +350,7 @@ var exports = (function() {
      * with the id as an added attribute.
      */
     function fieldForId(id) {
-      var field = template.fields[id];
+      var field = template.spec.fields[id];
       return Object.assign({ id: id } , field);
     }
 
@@ -369,7 +369,7 @@ var exports = (function() {
      */
     function fields() {
       var ret = []
-        , fieldIds = Object.keys(template.fields)
+        , fieldIds = Object.keys(template.spec.fields)
         , fieldId = null
         , field = null;
 
