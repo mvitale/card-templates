@@ -258,7 +258,7 @@ var exports = (function() {
         , data = wipeData(fieldName)
         ;
 
-      data.choiceKey = index;
+      data.choiceKey = key;
       setDirty(true);
     }
     that.setChoiceKey = setChoiceKey;
@@ -456,7 +456,7 @@ var exports = (function() {
 
       if (choiceKey != null) {
         chosenValue = resolveChoice(choiceKey, fieldChoices);
-        mergedValue = Object.assign(chosenValue, mergedValue);
+        mergedValue = Object.assign({}, chosenValue, mergedValue);
       }
 
       return mergedValue;
