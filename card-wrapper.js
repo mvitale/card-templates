@@ -23,7 +23,7 @@ var exports = (function() {
       return cb(new Error('Template supplier not set'));
     }
 
-    templateSupplier.supply(card.templateName, card.locale, function(err, template) {
+    templateSupplier.supply(card.templateName, card.templateVersion, card.locale, function(err, template) {
       if (err) {
         return cb(err);
       }
