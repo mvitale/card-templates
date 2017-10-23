@@ -244,6 +244,21 @@ var exports = (function() {
         , data = dataForField(fieldName)
         ;
 
+      if (!data.value || !data.value.length) {
+        data.value = new Array(field.max);
+
+        for (var i = 0; i < data.value.length; i++) {
+          data.value[i] = {
+            key: {
+              text: ''
+            },
+            val: {
+              text: ''
+            }
+          };
+        }
+      }
+
       data.value[index][keyOrVal].text = value;
       setDirty(true);
     }
