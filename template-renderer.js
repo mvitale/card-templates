@@ -408,6 +408,8 @@
   if (typeof module === "undefined") {
     window.TemplateRenderer = TemplateRenderer;
   } else {
-    module.exports = TemplateRenderer;
+    module.exports.new = function() {
+      return new TemplateRenderer(...Array.from(arguments));
+    }
   }
 })();
