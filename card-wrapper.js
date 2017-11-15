@@ -787,6 +787,7 @@ var exports = (function() {
           break;
         case 'text-icon':
           results = buildTextIconData(field, data, colorSchemes);
+          break;
         default:
           throw new Error('Invalid field type: ' + field.type);
       }
