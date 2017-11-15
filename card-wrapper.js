@@ -635,20 +635,26 @@ var exports = (function() {
      * Build drawing data for field type 'text-icon'
      */
     function buildTextIconData(field, data, colorSchemes) {
-      return [
-        buildTextDataHelper(
-          field.x, // TODO: this is WRONG
-          field.y,
-          field.font,
-          field.color,
-          null,
-          null,
-          'center',
-          data.text,
-          colorSchemes
-        ),
-        buildImageDataHelper(field, data)
-      ];
+      var results = [];
+
+      if (Object.keys(data).length) {
+        results = [
+          buildTextDataHelper(
+            field.x, // TODO: this is WRONG
+            field.y,
+            field.font,
+            field.color,
+            null,
+            null,
+            'center',
+            data.text,
+            colorSchemes
+          ),
+          buildImageDataHelper(field, data)
+        ];
+      }
+
+      return results;
     }
 
     /*
