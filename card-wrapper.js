@@ -632,6 +632,26 @@ var exports = (function() {
     }
 
     /*
+     * Build drawing data for field type 'text-icon'
+     */
+    function buildTextIconData(field, data, colorSchemes) {
+      return [
+        buildTextDataHelper(
+          field.x, // TODO: this is WRONG
+          field.y,
+          field.font,
+          field.color,
+          null,
+          null,
+          'center',
+          data.text,
+          colorSchemes
+        ),
+        buildImageDataHelper(field, data)
+      ];
+    }
+
+    /*
      * Build drawing data for field type 'image'
      */
     function buildImageData(field, data, colorSchemes) {
@@ -765,6 +785,8 @@ var exports = (function() {
         case 'key-val-list':
           results = buildKeyValListData(field, data, colorSchemes);
           break;
+        case 'text-icon':
+          results = buildTextIconData(field, data, colorSchemes);
         default:
           throw new Error('Invalid field type: ' + field.type);
       }
