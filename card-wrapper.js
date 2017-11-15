@@ -638,10 +638,12 @@ var exports = (function() {
       var results = [];
 
       if (Object.keys(data).length) {
+        // Order matters - draw image, then text
         results = [
+          buildImageDataHelper(field, data),
           buildTextDataHelper(
-            field.x, // TODO: this is WRONG
-            field.y,
+            field.x + field.width / 2,
+            field.y + field.textOffsetY,
             field.font,
             field.color,
             null,
@@ -649,8 +651,7 @@ var exports = (function() {
             'center',
             data.text,
             colorSchemes
-          ),
-          buildImageDataHelper(field, data)
+          )
         ];
       }
 
