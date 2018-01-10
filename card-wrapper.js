@@ -721,18 +721,20 @@ var exports = (function() {
         );
 
         // additionalElements (which do not require data)
-        field.additionalElements.forEach(function(elemField) {
-          switch(elemField.type) {
-            case 'line':
-              offsetField = Object.assign({}, elemField);
-              offsetField.startY += yOffset;
-              offsetField.endY += yOffset;
-              results.push(buildLineData(offsetField, colorSchemes));
-              break;
-            default:
-              throw new Error('Unsupported field type: ' + elemField.type);
-          }
-        });
+        if (field.additionalElements) {
+          field.additionalElements.forEach(function(elemField) {
+            switch(elemField.type) {
+              case 'line':
+                offsetField = Object.assign({}, elemField);
+                offsetField.startY += yOffset;
+                offsetField.endY += yOffset;
+                results.push(buildLineData(offsetField, colorSchemes));
+                break;
+              default:
+                throw new Error('Unsupported field type: ' + elemField.type);
+            }
+          });
+        }
       }
 
       return results;
