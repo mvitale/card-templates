@@ -632,6 +632,33 @@ var exports = (function() {
     }
 
     /*
+     * Build drawing data for field type 'text-icon'
+     */
+    function buildTextIconData(field, data, colorSchemes) {
+      var results = [];
+
+      if (Object.keys(data).length) {
+        // Order matters - draw image, then text
+        results = [
+          buildImageDataHelper(field, data),
+          buildTextDataHelper(
+            field.x + field.width / 2,
+            field.y + field.textOffsetY,
+            field.font,
+            field.color,
+            null,
+            null,
+            'center',
+            data.text,
+            colorSchemes
+          )
+        ];
+      }
+
+      return results;
+    }
+
+    /*
      * Build drawing data for field type 'image'
      */
     function buildImageData(field, data, colorSchemes) {
@@ -766,6 +793,9 @@ var exports = (function() {
           break;
         case 'key-val-list':
           results = buildKeyValListData(field, data, colorSchemes);
+          break;
+        case 'text-icon':
+          results = buildTextIconData(field, data, colorSchemes);
           break;
         default:
           throw new Error('Invalid field type: ' + field.type);
