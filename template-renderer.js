@@ -408,8 +408,8 @@
   if (typeof module === "undefined") {
     window.TemplateRenderer = TemplateRenderer;
   } else {
-    module.exports.new = function() {
-      return new TemplateRenderer(...Array.from(arguments));
+    module.exports.new = function(canvasSupplier, imageFetcher) {
+      return new TemplateRenderer(canvasSupplier, imageFetcher);
     }
   }
 })();
