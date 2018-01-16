@@ -567,6 +567,7 @@ var exports = (function() {
         field.prefix,
         field.wrapAt,
         field.textAlign,
+        field.lineHeight,
         text,
         colorSchemes
       );
@@ -585,6 +586,7 @@ var exports = (function() {
           field.prefix,
           field.wrapAt,
           field.textAlign,
+          null,
           data.key.text,
           colorSchemes
         ),
@@ -596,6 +598,7 @@ var exports = (function() {
           field.prefix,
           field.wrapAt,
           field.textAlign,
+          null,
           data.val.text,
           colorSchemes
         )
@@ -613,6 +616,7 @@ var exports = (function() {
       prefix,
       wrapAt,
       textAlign,
+      lineHeight,
       text,
       colorSchemes
     ) {
@@ -627,7 +631,8 @@ var exports = (function() {
         x: x,
         y: y,
         wrapAt: wrapAt,
-        textAlign: textAlign
+        textAlign: textAlign,
+        lineHeight: lineHeight
       };
     }
 
@@ -649,6 +654,7 @@ var exports = (function() {
             null,
             null,
             'center',
+            null,
             data.text,
             colorSchemes
           )

@@ -246,10 +246,15 @@
         , value = data.text
         , x = data.x
         , y = data.y
+        , lineHeight = data.lineHeight
         ;
 
       ctx.font = data.font;
       ctx.fillStyle = data.color;
+
+      if (!lineHeight) {
+        lineHeight = fontSizePx(ctx) * fontSizeLineHeightMultiplier;
+      }
 
       if (data.prefix) {
         value = data.prefix + value;
@@ -290,7 +295,7 @@
 
             if (xIncr + lineX > data.wrapAt && !firstWord) {
               lineX = x;
-              curY += fontSizePx(ctx) * fontSizeLineHeightMultiplier;
+              curY += lineHeight;
             }
 
             ctx.fillText(curWord, lineX, curY);
@@ -298,7 +303,7 @@
             firstWord = false;
           } else {
             lineX = x;
-            curY += fontSizePx(ctx) * fontSizeLineHeightMultiplier;
+            curY += lineHeight;
             firstWord = true;
           }
         }
