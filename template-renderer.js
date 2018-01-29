@@ -357,7 +357,7 @@
 
       // TODO: integrate into above calculations
       if (data.zoomLevel) {
-        sHeight -= data.zoomLevel * sWidth / 100;
+        sHeight -= data.zoomLevel * sHeight / 100;
         sWidth = targetRatio * sHeight;
       }
 
