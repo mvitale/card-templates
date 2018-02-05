@@ -88,7 +88,7 @@ var exports = (function() {
     function checkFieldNameValid(name) {
       // TODO: check this condition
       if (!(name in template.spec.fields)) {
-        throw new Error('invalid field name');
+        throw new Error('invalid field name: ' + name);
       }
 
       return fieldForId(name);
