@@ -338,7 +338,7 @@ var exports = (function() {
     /*
      * Object { [choiceKey1]: choice1, ..., [choiceKeyN]: choiceN}
      */
-    getFieldChoicesMap = function(fieldId) {
+    function getFieldChoicesMap(fieldId) {
       var choiceList = that.getFieldChoices(fieldId)
         , result = {}
         , curChoice
