@@ -581,7 +581,7 @@ var exports = (function() {
         buildTextDataHelper(
           field.keyX,
           field.y,
-          field.font,
+          field.keyFont,
           field.color,
           field.prefix,
           field.wrapAt,
@@ -593,7 +593,7 @@ var exports = (function() {
         buildTextDataHelper(
           field.valX,
           field.y,
-          field.font,
+          field.valFont,
           field.color,
           field.prefix,
           field.wrapAt,
