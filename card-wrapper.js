@@ -645,7 +645,7 @@ var exports = (function() {
       if (Object.keys(data).length) {
         // Order matters - draw image, then text
         results = [
-          buildImageDataHelper(field, data),
+          buildImageDataHelper(field, data, colorSchemes),
           buildTextDataHelper(
             field.x + field.width / 2,
             field.y + field.textOffsetY,
@@ -675,7 +675,7 @@ var exports = (function() {
       }
 
       if (data.url) {
-        results.push(buildImageDataHelper(field, data));
+        results.push(buildImageDataHelper(field, data, colorSchemes));
       }
 
       return results;
@@ -684,7 +684,7 @@ var exports = (function() {
     /*
      * Build drawing data of type image
      */
-    function buildImageDataHelper(field, data) {
+    function buildImageDataHelper(field, data, colorSchemes) {
         var result = {
           type: 'image',
           x: field.x,
@@ -697,7 +697,7 @@ var exports = (function() {
           flipVert: data.flipVert,
           flipHoriz: data.flipHoriz,
           zoomLevel: data.zoomLevel,
-          url: data.url,
+          url: resolveColor(colorSchemes, data.url),
           id: field.id
         };
 
@@ -720,7 +720,7 @@ var exports = (function() {
             , data = datas[i]
             ;
 
-          results.push(buildImageDataHelper(spec, data));
+          results.push(buildImageDataHelper(spec, data, colorSchemes));
         }
       }
 
