@@ -544,6 +544,13 @@ var exports = (function() {
         , fontStyle
         ;
 
+      if (
+        field.labelFor &&
+        !Object.keys(resolvedFieldData(checkFieldNameValid(field.labelFor))).length
+      ) {
+        text = '';
+      }
+
       if (!font) {
         fontSz = data.fontSz;
         fontFamily = field.fontFamily;
