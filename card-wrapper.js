@@ -650,22 +650,19 @@ var exports = (function() {
       var results = [];
 
       if (Object.keys(data).length) {
-        // Order matters - draw image, then text
-        results = [
-          buildImageDataHelper(field, data, colorSchemes),
-          buildTextDataHelper(
-            field.x + field.width / 2,
-            field.y + field.textOffsetY,
-            field.font,
-            field.color,
-            null,
-            null,
-            'center',
-            null,
-            data.text,
-            colorSchemes
-          )
-        ];
+        addImageDataToResults(field, data, colorSchemes, results);
+        results.push(buildTextDataHelper(
+          field.x + field.width / 2,
+          field.y + field.textOffsetY,
+          field.font,
+          field.color,
+          null,
+          null,
+          'center',
+          null,
+          data.text,
+          colorSchemes
+        ));
       }
 
       return results;
@@ -675,15 +672,15 @@ var exports = (function() {
      * Build drawing data for field type 'image'
      */
     function buildImageData(field, data, colorSchemes) {
-      var results = [];
+      var results = []
+        , url = data.url ? resolveColor(colorSchemes, data.url) : null
+        ;
 
       if (field.credit) {
         results.push(buildTextData(field.credit, data.credit, colorSchemes));
       }
 
-      if (data.url) {
-        results.push(buildImageDataHelper(field, data, colorSchemes));
-      }
+      addImageDataToResults(field, data, colorSchemes, results);
 
       return results;
     }
@@ -691,8 +688,11 @@ var exports = (function() {
     /*
      * Build drawing data of type image
      */
-    function buildImageDataHelper(field, data, colorSchemes) {
-        var result = {
+    function addImageDataToResults(field, data, colorSchemes, results) {
+      var url = data.url ? resolveColor(colorSchemes, data.url) : null;
+
+      if (url) {
+        results.push({
           type: 'image',
           x: field.x,
           y: field.y,
@@ -706,9 +706,8 @@ var exports = (function() {
           zoomLevel: data.zoomLevel,
           url: resolveColor(colorSchemes, data.url),
           id: field.id
-        };
-
-      return result;
+        });
+      }
     }
 
     /*
@@ -727,7 +726,7 @@ var exports = (function() {
             , data = datas[i]
             ;
 
-          results.push(buildImageDataHelper(spec, data, colorSchemes));
+          addImageDataToResults(spec, data, colorSchemes, results);
         }
       }
 
