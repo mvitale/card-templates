@@ -553,7 +553,7 @@ var exports = (function() {
 
       if (!font) {
         fontSz = data.fontSz;
-        fontFamily = field.fontFamily;
+        fontFamily = "'" + field.fontFamily + "'";
         fontStyle = field.fontStyle;
 
         if (fontStyle) {

@@ -20,6 +20,9 @@
  * After all dependencies have been injected, call setCard to set the card to
  * render, then draw to render the card to a Canvas.
  */
+
+var opentype = require('opentype.js');
+
 (function() {
   function RotatedImageCache(canvasSupplier) {
     var that = this
@@ -192,20 +195,24 @@
         canvas = canvasSupplier.drawingCanvas(card.width(), card.height());
         ctx = canvas.getContext('2d');
 
-        try {
-          drawingData.forEach(function(data) {
-            drawField(ctx, data, urlsToImages);
-          });
-        } catch (e) {
-          return cb(e);
-        }
+        opentype.load('/Users/mvitale/Open_Sans/OpenSans-Regular.ttf', (err, font) => {
+          if (err) return cb(err);
 
-        return cb(null, canvas);
+          try {
+            drawingData.forEach(function(data) {
+              drawField(ctx, data, urlsToImages, font);
+            });
+          } catch (e) {
+            return cb(e);
+          }
+
+          return cb(null, canvas);
+        });
       });
     }
     this.draw = draw;
 
-    function drawField(ctx, data, urlsToImages) {
+    function drawField(ctx, data, urlsToImages, font) {
       switch(data.type) {
         case 'color':
           drawColor(ctx, data);
@@ -214,7 +221,7 @@
           drawLine(ctx, data);
           break;
         case 'text':
-          drawText(ctx, data);
+          drawText(ctx, data, font);
           break;
         case 'image':
           drawImage(ctx, data, urlsToImages[data.url]);
@@ -229,7 +236,7 @@
       ctx.fillRect(data.x, data.y, data.width, data.height);
     }
 
-    function drawText(ctx, data) {
+    function drawText(ctx, data, font) {
       var fontSizeLineHeightMultiplier = 1.12
         , words = null
         , width = null
@@ -260,6 +267,14 @@
         value = data.prefix + value;
       }
 
+      var lineSlices = value.split('\n');
+
+      lineSlices.forEach((slice) => {
+        font.draw(ctx, slice, x, y, fontSizePx(ctx));
+        y += lineHeight;
+      });
+
+      /*
       // TODO: Allow wrapping for text alignments other than default left
       if (data.wrapAt == null) {
         if (data.textAlign != null) {
@@ -308,6 +323,7 @@
           }
         }
       }
+      */
     }
 
     // Get current font size in pixels from canvas context
