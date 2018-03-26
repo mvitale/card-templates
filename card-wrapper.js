@@ -668,6 +668,18 @@ var exports = (function() {
       return results;
     }
 
+    function buildIconData(field, data, colorSchemes) {
+      var results = [];
+
+      addImageDataToResults(field, data, colorSchemes, results);
+
+      if (field.label && data.label) {
+        results = results.concat(buildTextData(field.label, data.label, colorSchemes));
+      }
+
+      return results;
+    }
+
     /*
      * Build drawing data for field type 'image'
      */
@@ -808,6 +820,9 @@ var exports = (function() {
           break;
         case 'text-icon':
           results = buildTextIconData(field, data, colorSchemes);
+          break;
+        case 'icon':
+          results = buildIconData(field, data, colorSchemes);
           break;
         default:
           throw new Error('Invalid field type: ' + field.type);
