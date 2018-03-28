@@ -674,7 +674,7 @@ var exports = (function() {
       addImageDataToResults(field, data, colorSchemes, results);
 
       if (field.label && data.label) {
-        results = results.concat(buildTextData(field.label, data.label, colorSchemes));
+        results = results.concat(buildTextData(field.iconLabel, { text: data.label }, colorSchemes));
       }
 
       return results;
