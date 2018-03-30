@@ -120,11 +120,11 @@
 
   function TemplateRenderer(options) {
     var that = this
+      , canvasSupplier = options.canvasSupplier
+      , imageFetcher = options.imageFetcher 
+      , textRenderer = options.textRenderer
       , rotatedImageCache = new RotatedImageCache(canvasSupplier)
       , logger
-      , imageFetcher = options.imageFetcher 
-      , canvasSupplier = options.canvasSupplier
-      , textRenderer = options.textRenderer
       ;
 
     if (!textRenderer) {
