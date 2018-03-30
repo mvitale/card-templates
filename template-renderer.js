@@ -208,24 +208,20 @@
         canvas = canvasSupplier.drawingCanvas(card.width(), card.height());
         ctx = canvas.getContext('2d');
 
-        opentype.load('/Users/mvitale/Open_Sans/OpenSans-Regular.ttf', (err, font) => {
-          if (err) return cb(err);
+        try {
+          drawingData.forEach(function(data) {
+            drawField(ctx, data, urlsToImages);
+          });
+        } catch (e) {
+          return cb(e);
+        }
 
-          try {
-            drawingData.forEach(function(data) {
-              drawField(ctx, data, urlsToImages, font);
-            });
-          } catch (e) {
-            return cb(e);
-          }
-
-          return cb(null, canvas);
-        });
+        return cb(null, canvas);
       });
     }
     this.draw = draw;
 
-    function drawField(ctx, data, urlsToImages, font) {
+    function drawField(ctx, data, urlsToImages) {
       switch(data.type) {
         case 'color':
           drawColor(ctx, data);
@@ -234,7 +230,7 @@
           drawLine(ctx, data);
           break;
         case 'text':
-          drawText(ctx, data, font);
+          drawText(ctx, data);
           break;
         case 'image':
           drawImage(ctx, data, urlsToImages[data.url]);
@@ -249,7 +245,7 @@
       ctx.fillRect(data.x, data.y, data.width, data.height);
     }
 
-    function drawText(ctx, data, font) {
+    function drawText(ctx, data) {
       var fontSizeLineHeightMultiplier = 1.12
         , words = null
         , width = null
