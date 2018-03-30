@@ -20,9 +20,6 @@
  * After all dependencies have been injected, call setCard to set the card to
  * render, then draw to render the card to a Canvas.
  */
-
-var opentype = require('opentype.js');
-
 (function() {
   function RotatedImageCache(canvasSupplier) {
     var that = this
