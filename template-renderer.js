@@ -112,11 +112,27 @@ var opentype = require('opentype.js');
     }
   }
 
-  function TemplateRenderer(canvasSupplier, imageFetcher) {
+  var defaultTextRenderer = {
+    fillText: function(ctx, text, x, y) {
+      ctx.fillText(text, x, y);
+    },
+    textWidth: function(ctx, text) {
+      return ctx.measureText(text).width;
+    }
+  }
+
+  function TemplateRenderer(options) {
     var that = this
       , rotatedImageCache = new RotatedImageCache(canvasSupplier)
       , logger
+      , imageFetcher = options.imageFetcher 
+      , canvasSupplier = options.canvasSupplier
+      , textRenderer = options.textRenderer
       ;
+
+    if (!textRenderer) {
+      textRenderer = defaultTextRenderer;
+    }
 
     function setLogger(theLogger) {
       logger = theLogger;
@@ -269,24 +285,18 @@ var opentype = require('opentype.js');
 
       var lineSlices = value.split('\n');
 
-      lineSlices.forEach((slice) => {
-        font.draw(ctx, slice, x, y, fontSizePx(ctx));
-        y += lineHeight;
-      });
-
-      /*
       // TODO: Allow wrapping for text alignments other than default left
       if (data.wrapAt == null) {
         if (data.textAlign != null) {
           if (data.textAlign === 'center') {
-            x = x - ctx.measureText(value, x, y).width / 2;
+            x = x - textRenderer.textWidth(ctx, value) / 2;
           } else if (data.textAlign === 'right') {
-            x = x - ctx.measureText(value, x, y).width;
+            x = x - textRenderer.textWidth(ctx, value);
           }
           // left is implicit - nothing to do
         }
 
-        ctx.fillText(value, x, y);
+        textRenderer.fillText(ctx, value, x, y);
       } else {
         remaining = value.slice(0);
         firstWord = true;
@@ -306,14 +316,14 @@ var opentype = require('opentype.js');
           }
 
           if (curWord !== '\n') {
-            xIncr = ctx.measureText(curWord).width;
+            xIncr = textRenderer.textWidth(curWord);
 
             if (xIncr + lineX > data.wrapAt && !firstWord) {
               lineX = x;
               curY += lineHeight;
             }
 
-            ctx.fillText(curWord, lineX, curY);
+            textRenderer.fillText(ctx, curWord, lineX, curY);
             lineX += xIncr;
             firstWord = false;
           } else {
@@ -323,7 +333,6 @@ var opentype = require('opentype.js');
           }
         }
       }
-      */
     }
 
     // Get current font size in pixels from canvas context
@@ -429,8 +438,8 @@ var opentype = require('opentype.js');
   if (typeof module === "undefined") {
     window.TemplateRenderer = TemplateRenderer;
   } else {
-    module.exports.new = function(canvasSupplier, imageFetcher) {
-      return new TemplateRenderer(canvasSupplier, imageFetcher);
+    module.exports.new = function(options) {
+      return new TemplateRenderer(options);
     }
   }
 })();
