@@ -316,7 +316,7 @@ var opentype = require('opentype.js');
           }
 
           if (curWord !== '\n') {
-            xIncr = textRenderer.textWidth(curWord);
+            xIncr = textRenderer.textWidth(ctx, curWord);
 
             if (xIncr + lineX > data.wrapAt && !firstWord) {
               lineX = x;
