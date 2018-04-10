@@ -263,6 +263,8 @@
         , x = data.x
         , y = data.y
         , lineHeight = data.lineHeight
+        , bgWidth
+        , bgX
         ;
 
       ctx.font = data.font;
@@ -287,6 +289,23 @@
             x = x - textRenderer.textWidth(ctx, value);
           }
           // left is implicit - nothing to do
+        }
+
+        if (data.bg) {
+          bgX = x;
+          bgWidth = textRenderer.textWidth(ctx, value);
+          
+          if (data.bg.hPad) {
+            bgX -= data.bg.hPad;
+            bgWidth += 2 * data.bg.hPad;
+          }
+
+          drawColor(ctx, {
+            x: bgX,
+            y: data.bg.y,
+            width: bgWidth,
+            height: data.bg.height
+          });
         }
 
         textRenderer.fillText(ctx, value, x, y);
