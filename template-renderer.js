@@ -304,10 +304,12 @@
             x: bgX,
             y: data.bg.y,
             width: bgWidth,
-            height: data.bg.height
+            height: data.bg.height,
+            color: data.bg.color
           });
         }
 
+        ctx.fillStyle = data.color;
         textRenderer.fillText(ctx, value, x, y);
       } else {
         remaining = value.slice(0);
