@@ -499,6 +499,19 @@ var exports = (function() {
       return value;
     }
 
+    function fieldColor(field) {
+      if (!field.color) {
+        throw new TypeError('field missing color attribute');
+      }
+
+      var colorFields = fields().filter(function(field) {
+        return field.type === 'color-scheme'; 
+      });
+
+      return resolveColor(buildColorSchemes(colorFields), field.color);
+    }
+    that.fieldColor = fieldColor;
+
     /*
      * Build drawing data for field type 'color'
      */
