@@ -870,6 +870,7 @@ var exports = (function() {
           break;
         case 'text':
         case 'multiline-text':
+        case 'labeled-text':
           results = [buildTextData(field, data, colorSchemes)];
           break;
         case 'image':
