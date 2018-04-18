@@ -291,7 +291,7 @@
           // left is implicit - nothing to do
         }
 
-        if (data.bg) {
+        if (data.bg && value.length) {
           bgX = x;
           bgWidth = textRenderer.textWidth(ctx, value);
           
