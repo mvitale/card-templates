@@ -87,19 +87,26 @@ var exports = (function() {
      */
     function checkFieldNameValid(name) {
       // TODO: check this condition
-      if (!(name in template.spec.fields)) {
+      if (!fieldNameValid(name)) {
         throw new Error('invalid field name: ' + name);
       }
 
       return fieldForId(name);
     }
 
+    function fieldNameValid(name) {
+      return name in template.spec.fields;
+    }
+    that.fieldNameValid = fieldNameValid;
+
     function dataForFieldHelper(fieldId, key, forceNew) {
-      var data = card[key][fieldId];
+      var bucket = card[key] || {}
+        , data = bucket[fieldId]
+        ;
 
       if (!data || forceNew) {
         data = {};
-        card[key][fieldId] = data;
+        bucket[fieldId] = data;
       }
 
       return data;
