@@ -351,8 +351,12 @@
 
     // Get current font size in pixels from canvas context
     function fontSizePx(ctx) {
-      var fontArgs = ctx.font.split(' ');
-      return parseFloat(fontArgs[0].replace('px', ''));
+      var fontArgs = ctx.font.split(' ')
+        , size = fontArgs.find(function(part) {
+            return part.endsWith('px');
+          })
+
+      return parseFloat(size.replace('px', ''));
     }
 
     function drawImage(ctx, data, image) {
