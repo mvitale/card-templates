@@ -42,6 +42,11 @@ var exports = (function() {
     var defaultZoomLevel = 0
       ;
 
+    function templateName() {
+      return card.templateName;
+    }
+    that.templateName = templateName;
+
     /*
      * Get the width of this card, as specified in its template
      */
