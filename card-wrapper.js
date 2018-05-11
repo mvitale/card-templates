@@ -105,9 +105,15 @@ var exports = (function() {
     that.fieldNameValid = fieldNameValid;
 
     function dataForFieldHelper(fieldId, key, forceNew) {
-      var bucket = card[key] || {}
-        , data = bucket[fieldId]
+      var bucket = card[key]
+        , data 
         ;
+
+      if (!bucket) {
+        bucket = card[key] = {};
+      }
+
+      data = bucket[fieldId];
 
       if (!data || forceNew) {
         data = {};
