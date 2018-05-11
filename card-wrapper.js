@@ -396,7 +396,7 @@ var exports = (function() {
      */
     function editableFields() {
       return fields().filter(function(field) {
-        return field.label != null;
+        return field.uiLabel != null;
       });
     }
     that.editableFields = editableFields;
@@ -506,6 +506,19 @@ var exports = (function() {
       return value;
     }
 
+    function fieldColor(field) {
+      if (!field.color) {
+        throw new TypeError('field missing color attribute');
+      }
+
+      var colorFields = fields().filter(function(field) {
+        return field.type === 'color-scheme'; 
+      });
+
+      return resolveColor(buildColorSchemes(colorFields), field.color);
+    }
+    that.fieldColor = fieldColor;
+
     /*
      * Build drawing data for field type 'color'
      */
@@ -549,6 +562,7 @@ var exports = (function() {
         , fontSz
         , fontFamily
         , fontStyle
+        , bg = null
         ;
 
       if (
@@ -573,6 +587,15 @@ var exports = (function() {
         font = fontParts.join(' ');
       }
 
+      if (field.bg) {
+        bg = {
+          color: data.bgColor,
+          height: field.bg.height,
+          hPad: field.bg.hPad,
+          y: field.bg.y
+        }
+      }
+
       return buildTextDataHelper(
         field.x,
         field.y,
@@ -582,6 +605,7 @@ var exports = (function() {
         field.wrapAt,
         field.textAlign,
         field.lineHeight,
+        bg,
         text,
         colorSchemes
       );
@@ -601,6 +625,7 @@ var exports = (function() {
           field.wrapAt,
           field.textAlign,
           null,
+          null, 
           data.key.text,
           colorSchemes
         ),
@@ -612,6 +637,7 @@ var exports = (function() {
           field.prefix,
           field.wrapAt,
           field.textAlign,
+          null,
           null,
           data.val.text,
           colorSchemes
@@ -631,6 +657,7 @@ var exports = (function() {
       wrapAt,
       textAlign,
       lineHeight,
+      bg,
       text,
       colorSchemes
     ) {
@@ -646,7 +673,8 @@ var exports = (function() {
         y: y,
         wrapAt: wrapAt,
         textAlign: textAlign,
-        lineHeight: lineHeight
+        lineHeight: lineHeight,
+        bg: bg
       };
     }
 
@@ -667,6 +695,7 @@ var exports = (function() {
           null,
           'center',
           null,
+          null,
           data.text,
           colorSchemes
         ));
@@ -677,13 +706,7 @@ var exports = (function() {
 
     function buildIconData(field, data, colorSchemes) {
       var results = [];
-
       addImageDataToResults(field, data, colorSchemes, results);
-
-      if (field.label && data.label) {
-        results = results.concat(buildTextData(field.iconLabel, { text: data.label }, colorSchemes));
-      }
-
       return results;
     }
 
@@ -799,6 +822,47 @@ var exports = (function() {
     }
 
     /*
+     * Build a list of primitive drawing data elements (of the types recognized
+     * by the renderer) from the card.
+     */
+    function buildDrawingData() {
+      var colorSchemeFields = []
+        , otherFields = []
+        , colorSchemes = null
+        , drawingData = []
+        ;
+
+      fields().forEach(function(field) {
+        if (field.type === 'color-scheme') {
+          colorSchemeFields.push(field);
+        } else {
+          otherFields.push(field);
+        }
+      });
+
+      colorSchemes = buildColorSchemes(colorSchemeFields);
+
+      otherFields.forEach(function(field) {
+        var chosenValue = resolvedFieldData(field)
+          , fieldDatas = buildDataForField(field, chosenValue, colorSchemes)
+          ;
+
+        drawingData = drawingData.concat(fieldDatas);
+
+        if (field.label && chosenValue.label) {
+          drawingData.push(buildTextData(
+            field.label, 
+            { text: chosenValue.label }, 
+            colorSchemes
+          ));
+        }
+      });
+
+      return drawingData;
+    }
+    that.buildDrawingData = buildDrawingData;
+
+    /*
      * Build drawing data for a field
      */
     function buildDataForField(field, data, colorSchemes) {
@@ -813,6 +877,7 @@ var exports = (function() {
           break;
         case 'text':
         case 'multiline-text':
+        case 'labeled-text':
           results = [buildTextData(field, data, colorSchemes)];
           break;
         case 'image':
@@ -848,38 +913,6 @@ var exports = (function() {
 
       return colorSchemes;
     }
-
-    /*
-     * Build a list of primitive drawing data elements (of the types recognized
-     * by the renderer) from the card.
-     */
-    function buildDrawingData() {
-      var colorSchemeFields = []
-        , otherFields = []
-        , colorSchemes = null
-        , drawingData = []
-        ;
-
-      fields().forEach(function(field) {
-        if (field.type === 'color-scheme') {
-          colorSchemeFields.push(field);
-        } else {
-          otherFields.push(field);
-        }
-      });
-
-      colorSchemes = buildColorSchemes(colorSchemeFields);
-
-      otherFields.forEach(function(field) {
-        var chosenValue = resolvedFieldData(field)
-          , fieldDatas = buildDataForField(field, chosenValue, colorSchemes)
-
-        drawingData = drawingData.concat(fieldDatas);
-      });
-
-      return drawingData;
-    }
-    that.buildDrawingData = buildDrawingData;
 
     function save(cb) {
       if (!dataPersistence) {
