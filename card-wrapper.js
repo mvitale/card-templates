@@ -153,7 +153,7 @@ var exports = (function() {
         value = userDataForField(fieldName)[fieldData.userDataKey];
       } else  {
         if (!fieldData.value) {
-          fieldData.value = {};
+          fieldData.value = isArrayField(field.type) ? [] : {};
         }
 
         value = fieldData.value;
@@ -459,6 +459,10 @@ var exports = (function() {
       }
 
       return chosenValue;
+    }
+
+    function isArrayField(type) {
+      return type === 'key-val-list';
     }
 
     /*
