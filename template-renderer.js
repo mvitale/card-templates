@@ -291,24 +291,6 @@
           // left is implicit - nothing to do
         }
 
-        if (data.bg && value.length) {
-          bgX = x;
-          bgWidth = textRenderer.textWidth(ctx, value);
-          
-          if (data.bg.hPad) {
-            bgX -= data.bg.hPad;
-            bgWidth += 2 * data.bg.hPad;
-          }
-
-          drawColor(ctx, {
-            x: bgX,
-            y: data.bg.y,
-            width: bgWidth,
-            height: data.bg.height,
-            color: data.bg.color
-          });
-        }
-
         ctx.fillStyle = data.color;
         textRenderer.fillText(ctx, value, x, y);
       } else {

@@ -140,7 +140,7 @@ var exports = (function() {
     /*
      * Get the object on which data attributes should be set.
      * If a userDataKey is set, the userData object to which it refers is returned.
-     * Otherwise, card.data[fieldName].value is returned, defaulting to {} if not already
+     * Otherwise, card.data[fieldName].value is returned, defaulting to {} or [] if not already
      * present.
      */
     function getDataValue(fieldName) {
@@ -474,26 +474,27 @@ var exports = (function() {
         , fieldChoices = getFieldChoicesMap(field.id)
         , dataValue = getDataValue(field.id)
         , choiceKey = getChoiceKey(field.id)
-        , chosenValue = null
+        , choiceValue = null
         , mergedValue
         , curVal
+        , numValues
         ;
 
-      if (dataValue instanceof Array) {
-        mergedValue = [];
-
-        for (var i = 0; i < dataValue.length; i++) {
-          curVal = dataValue[i];
-          mergedValue[i] = Object.assign({}, fieldValue, curVal);
-        }
-      } else {
-        mergedValue = {};
-        Object.assign(mergedValue, fieldValue, dataValue);
+      if (choiceKey != null) {
+        choiceValue = resolveChoice(choiceKey, fieldChoices);
       }
 
-      if (choiceKey != null) {
-        chosenValue = resolveChoice(choiceKey, fieldChoices);
-        mergedValue = Object.assign({}, chosenValue, mergedValue);
+      if (Array.isArray(dataValue)) {
+        numValues = Math.max(dataValue.length, choiceValue.length);
+        mergedValue = new Array(numValues);
+
+        for (var i = 0; i < numValues; i++) {
+          curChoiceValue = i < choiceValue.length ? choiceValue[i] : {};
+          curVal = i < dataValue.length ? dataValue[i] : {};
+          mergedValue[i] = Object.assign({}, fieldValue, curChoiceValue, curVal);
+        }
+      } else {
+        mergedValue = Object.assign({}, fieldValue, choiceValue || {}, dataValue);
       }
 
       return mergedValue;
@@ -578,6 +579,7 @@ var exports = (function() {
         , fontFamily
         , fontStyle
         , bg = null
+        , results = []
         ;
 
       if (
@@ -603,33 +605,43 @@ var exports = (function() {
       }
 
       if (field.bg) {
-        bg = {
-          color: data.bgColor,
-          height: field.bg.height,
-          hPad: field.bg.hPad,
-          y: field.bg.y
-        }
+        results.push(buildColorData(field.bg, { color: data.bgColor }, colorSchemes));
       }
 
-      return buildTextDataHelper(
-        field.x,
-        field.y,
-        font,
-        field.color,
-        field.prefix,
-        field.wrapAt,
-        field.textAlign,
-        field.lineHeight,
-        bg,
-        text,
-        colorSchemes
+      results.push(
+        buildTextDataHelper(
+          field.x,
+          field.y,
+          font,
+          field.color,
+          field.prefix,
+          field.wrapAt,
+          field.textAlign,
+          field.lineHeight,
+          bg,
+          text,
+          colorSchemes
+        )
       );
+
+      return results;
     }
 
     /*
      * Build drawing data for field type key-val-text.
      */
     function buildKeyValTextData(field, data, colorSchemes) {
+      var keyBg = null;
+
+      if (field.keyBg) {
+        keyBg = {
+          color: data.key.bgColor,
+          height: field.keyBg.height,
+          hPad: field.keyBg.hPad,
+          y: field.keyBg.y + field.y
+        }
+      }
+
       return [
         buildTextDataHelper(
           field.keyX,
@@ -640,7 +652,7 @@ var exports = (function() {
           field.wrapAt,
           field.textAlign,
           null,
-          null, 
+          keyBg,
           data.key.text,
           colorSchemes
         ),
@@ -790,31 +802,54 @@ var exports = (function() {
       return results;
     }
 
+    function buildKeyOrValData(field, baseX, baseY, data, colorSchemes) {
+      var offsetField = Object.assign({}, field);
+      offsetField.x += baseX;
+      offsetField.y += baseY;
+
+      if (field.bg) {
+        offsetField.bg = Object.assign({}, field.bg);
+        offsetField.bg.x += baseX;
+        offsetField.bg.y += baseY;
+      }
+
+      return buildTextData(offsetField, data, colorSchemes);
+    }
+
     /*
      * Build drawing data for field type key-val-list
      */
     function buildKeyValListData(field, data, colorSchemes) {
       var curData = null
         , offsetField = null
-        , yOffset = 0
+        , yOffset
         , results = []
+        , baseX
+        , colIndex
         , filteredData = data.filter(function(datum) {
             return datum.key.text || datum.val.text;
           })
         ;
 
       for (var i = 0; i < filteredData.length; i++) {
+        baseX = 0;
+        colIndex = i;
+
+        if (field.x) {
+          baseX = field.x;
+        } else if (field.colXs) {
+          baseX = field.colXs[Math.floor(i / field.perCol)];
+          colIndex = i % field.perCol;
+        }
+
         // Build data for key-val element, setting the y value according
         // to the field's yIncr and y values
         curData = filteredData[i];
-
-        yOffset = i * field.yIncr + field.y;
-        offsetField = Object.assign({}, field.keyValSpec);
-        offsetField.y += yOffset;
+        yOffset = colIndex * field.yIncr + field.y;
 
         results = results.concat(
-          buildKeyValTextData(offsetField, curData, colorSchemes)
-        );
+          buildKeyOrValData(field.key, baseX, yOffset, curData.key, colorSchemes)
+        ).concat(buildKeyOrValData(field.val, baseX, yOffset, curData.val, colorSchemes));
 
         // additionalElements (which do not require data)
         if (field.additionalElements) {
@@ -893,7 +928,7 @@ var exports = (function() {
         case 'text':
         case 'multiline-text':
         case 'labeled-text':
-          results = [buildTextData(field, data, colorSchemes)];
+          results = buildTextData(field, data, colorSchemes);
           break;
         case 'image':
         case 'labeled-choice-image':
