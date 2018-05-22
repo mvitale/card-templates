@@ -152,8 +152,8 @@ var exports = (function() {
       if (fieldData.userDataKey) {
         value = userDataForField(fieldName)[fieldData.userDataKey];
       } else  {
-        if (!fieldData.value) {
-          fieldData.value = isArrayField(field.type) ? [] : {};
+        if (!fieldData.value) { 
+          fieldData.value = isArrayField(field.type) ? [] : {}; 
         }
 
         value = fieldData.value;
@@ -254,12 +254,8 @@ var exports = (function() {
     }
     that.getUserDataAttr = getUserDataAttr;
 
-    /*
-     * Special setters for key-val-list data
-     */
-    function setKeyValText(fieldName, keyOrVal, index, value) {
-      var field = checkFieldNameValid(fieldName)
-        , data = dataForField(fieldName)
+    function getKeyValData(field) {
+      var data = dataForField(field.id)
         ;
 
       if (!data.value || !data.value.length) {
@@ -267,20 +263,50 @@ var exports = (function() {
 
         for (var i = 0; i < data.value.length; i++) {
           data.value[i] = {
-            key: {
-              text: ''
-            },
-            val: {
-              text: ''
-            }
+            key: {},
+            val: {}
           };
         }
       }
 
-      data.value[index][keyOrVal].text = value;
+      return data;
+    }
+
+    /*
+     * Special setters for key-val-list data
+     */
+    function setKeyValData(fieldName, keyOrVal, index, attr, value) {
+      var field = checkFieldNameValid(fieldName)
+        , data = getKeyValData(field)
+        ;
+
+      data.value[index][keyOrVal][attr] = value;
       setDirty(true);
     }
-    that.setKeyValText = setKeyValText;
+    that.setKeyValData = setKeyValData;
+
+    function setKeyValChoiceKey(fieldName, keyValIndex, choiceKey) {
+      var field = checkFieldNameValid(fieldName)
+        , data = getKeyValData(field)
+        ;
+
+      data.value[keyValIndex] = {
+        key: {},
+        val: {}
+      };
+
+      if (!data.choiceKey) {
+        data.choiceKey = new Array(field.max);
+      } else if (data.choiceKey.length < field.max) {
+        data.choiceKey = data.choiceKey.concat(
+          new Array(field.max - data.choiceKey.length)
+        );
+      }
+
+      data.choiceKey[keyValIndex] = choiceKey;
+    }
+    that.setKeyValChoiceKey = setKeyValChoiceKey;
+
 
     /*
      * Set a choice index for a field. This deletes the data's value attribute
@@ -475,7 +501,10 @@ var exports = (function() {
         , dataValue = getDataValue(field.id)
         , choiceKey = getChoiceKey(field.id)
         , choiceValue = null
+        , mergedKey
+        , mergedVal
         , mergedValue
+        , curChoiceValue
         , curVal
         , numValues
         ;
@@ -484,14 +513,16 @@ var exports = (function() {
         choiceValue = resolveChoice(choiceKey, fieldChoices);
       }
 
-      if (Array.isArray(dataValue)) {
+      if (field.type === 'key-val-list') {
         numValues = Math.max(dataValue.length, choiceValue.length);
         mergedValue = new Array(numValues);
 
         for (var i = 0; i < numValues; i++) {
           curChoiceValue = i < choiceValue.length ? choiceValue[i] : {};
           curVal = i < dataValue.length ? dataValue[i] : {};
-          mergedValue[i] = Object.assign({}, fieldValue, curChoiceValue, curVal);
+          mergedKey = Object.assign({}, fieldValue.key || {}, curChoiceValue.key || {}, curVal.key || {})
+          mergedVal = Object.assign({}, fieldValue.val || {}, curChoiceValue.val || {}, curVal.val || {})
+          mergedValue[i] = { key: mergedKey, val: mergedVal };
         }
       } else {
         mergedValue = Object.assign({}, fieldValue, choiceValue || {}, dataValue);
