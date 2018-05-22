@@ -520,8 +520,18 @@ var exports = (function() {
         for (var i = 0; i < numValues; i++) {
           curChoiceValue = i < choiceValue.length ? choiceValue[i] : {};
           curVal = i < dataValue.length ? dataValue[i] : {};
-          mergedKey = Object.assign({}, fieldValue.key || {}, curChoiceValue.key || {}, curVal.key || {})
-          mergedVal = Object.assign({}, fieldValue.val || {}, curChoiceValue.val || {}, curVal.val || {})
+          mergedKey = Object.assign(
+            {}, 
+            (fieldValue && fieldValue.key) || {}, 
+            (curChoiceValue && curChoiceValue.key) || {}, 
+            (curVal && curVal.key) || {}
+          );
+          mergedVal = Object.assign(
+            {}, 
+            (fieldValue && fieldValue.val) || {}, 
+            (curChoiceValue && curChoiceValue.val) || {}, 
+            (curVal && curVal.val) || {}
+          );
           mergedValue[i] = { key: mergedKey, val: mergedVal };
         }
       } else {
