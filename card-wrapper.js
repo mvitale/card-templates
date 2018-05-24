@@ -287,12 +287,18 @@ var exports = (function() {
 
     function setKeyValChoiceKey(fieldName, keyValIndex, choiceKey) {
       var field = checkFieldNameValid(fieldName)
+        , choices = getFieldChoicesMap(fieldName)
+        , choice = choices[choiceKey]
         , data = getKeyValData(field)
+        , value = data.value[keyValIndex]
+        , cleanKey = choice.key ? {} : value.key
+        , cleanVal = choice.val ? {} : value.val
         ;
 
+
       data.value[keyValIndex] = {
-        key: {},
-        val: {}
+        key: cleanKey,
+        val: cleanVal
       };
 
       if (!data.choiceKey) {
@@ -375,9 +381,10 @@ var exports = (function() {
     /*
      * Get the list of default choices for a field.
      */
-    that.getFieldChoices = function(fieldId) {
+    function getFieldChoices(fieldId) {
       return templateOrCardFieldData('choices', fieldId);
     }
+    that.getFieldChoices = getFieldChoices;
 
     /*
      * Object { [choiceKey1]: choice1, ..., [choiceKeyN]: choiceN}
@@ -472,13 +479,17 @@ var exports = (function() {
      * a list of values is returned.
      */
     function resolveChoice(choiceKey, fieldChoices) {
-      var chosenValue = null;
+      var chosenValue;
 
       if (Array.isArray(choiceKey)) {
-        chosenValue = [];
+        chosenValue = choiceKey.map(function(key) {
+          var value = null;
 
-        choiceKey.forEach(function(index) {
-         chosenValue.push(fieldChoices[index]);
+          if (key != null) {
+            value = fieldChoices[key];
+          }
+
+          return value;
         });
       } else {
         chosenValue = fieldChoices[choiceKey];
