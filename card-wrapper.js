@@ -514,6 +514,7 @@ var exports = (function() {
       }
 
       if (field.type === 'key-val-list') {
+        choiceValue = choiceValue || [];
         numValues = Math.max(dataValue.length, choiceValue.length);
         mergedValue = new Array(numValues);
 
@@ -645,7 +646,7 @@ var exports = (function() {
         font = fontParts.join(' ');
       }
 
-      if (field.bg) {
+      if (field.bg && data.bgColor) {
         results.push(buildColorData(field.bg, { color: data.bgColor }, colorSchemes));
       }
 
