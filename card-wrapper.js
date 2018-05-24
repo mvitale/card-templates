@@ -646,8 +646,34 @@ var exports = (function() {
         font = fontParts.join(' ');
       }
 
-      if (field.bg && data.bgColor) {
-        results.push(buildColorData(field.bg, { color: data.bgColor }, colorSchemes));
+      /* 
+       * There are two versions of the bg property:
+       * 1) x and width are specified. In that case, we can just build a normal
+       * color element here.
+       * 2) x and width aren't specified; an hPad value is. In that case, the 
+       * TemplateRenderer needs to calculate the x value and width dynamically,
+       * so we pass a bg options attribute as part of the text data.
+       */
+      if (
+        field.bg && 
+        data.bgColor
+      ) {
+        if (field.bg.x) {
+          results.push(
+            buildColorData(
+              field.bg, { 
+                color: data.bgColor 
+              }, colorSchemes
+            )
+          );
+        } else {
+          bg = {
+            color: data.bgColor,
+            height: field.bg.height,
+            hPad: field.bg.hPad,
+            y: field.bg.y
+          }
+        }
       }
 
       results.push(
@@ -788,7 +814,7 @@ var exports = (function() {
         ;
 
       if (field.credit) {
-        results.push(buildTextData(field.credit, data.credit, colorSchemes));
+        results = buildTextData(field.credit, data.credit, colorSchemes);
       }
 
       addImageDataToResults(field, data, colorSchemes, results);
@@ -942,7 +968,7 @@ var exports = (function() {
         drawingData = drawingData.concat(fieldDatas);
 
         if (field.label && chosenValue.label) {
-          drawingData.push(buildTextData(
+          drawingData = drawingData.concat(buildTextData(
             field.label, 
             { text: chosenValue.label }, 
             colorSchemes
