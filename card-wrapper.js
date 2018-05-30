@@ -605,23 +605,6 @@ var exports = (function() {
     }
 
     /*
-     * Build drawing data for field type 'line'
-     */
-    function buildLineData(field, colorSchemes) {
-      var resolvedColor = resolveColor(colorSchemes, field.color);
-
-      return {
-        type: 'line',
-        color: resolvedColor,
-        startX: field.startX,
-        startY: field.startY,
-        endX: field.endX,
-        endY: field.endY,
-        width: field.width
-      };
-    }
-
-    /*
      * Build drawing data for field type 'text'
      */
     function buildTextData(field, data, colorSchemes) {
@@ -930,6 +913,7 @@ var exports = (function() {
           buildKeyOrValData(field.key, baseX, yOffset, curData.key, colorSchemes)
         ).concat(buildKeyOrValData(field.val, baseX, yOffset, curData.val, colorSchemes));
 
+        /*
         // additionalElements (which do not require data)
         if (field.additionalElements) {
           field.additionalElements.forEach(function(elemField) {
@@ -945,6 +929,7 @@ var exports = (function() {
             }
           });
         }
+        */
       }
 
       return results;
@@ -1000,9 +985,6 @@ var exports = (function() {
       switch (field.type) {
         case 'color':
           results = [buildColorData(field, data, colorSchemes)];
-          break;
-        case 'line':
-          results = [buildLineData(field, colorSchemes)];
           break;
         case 'text':
         case 'multiline-text':
