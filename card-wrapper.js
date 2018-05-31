@@ -313,7 +313,7 @@ var exports = (function() {
     }
     that.setKeyValChoiceKey = setKeyValChoiceKey;
 
-    function setDefinitionText(fieldName, index, value) {
+    function setTextListData(fieldName, index, value) {
       var field = checkFieldNameValid(fieldName)
         , data = dataForField(field.id)
         ;
@@ -327,8 +327,9 @@ var exports = (function() {
       }
 
       data.value[index].text = value;
+      setDirty(true);
     }
-    that.setDefinitionText = setDefinitionText;
+    that.setTextListData = setTextListData;
     
     /*
      * Set a choice index for a field. This deletes the data's value attribute
@@ -515,7 +516,7 @@ var exports = (function() {
     }
 
     function isArrayField(type) {
-      return type === 'key-val-list' || type === 'definition-list';
+      return type === 'key-val-list' || type === 'text-list';
     }
 
     /*
@@ -914,7 +915,7 @@ var exports = (function() {
       return results;
     }
 
-    function buildDefinitionListData(field, data, colorSchemes) {
+    function buildTextListData(field, data, colorSchemes) {
       return [{
         type: 'text-list',
         x: field.x,
@@ -1002,8 +1003,8 @@ var exports = (function() {
         case 'icon':
           results = buildIconData(field, data, colorSchemes);
           break;
-        case 'definition-list':
-          results = buildDefinitionListData(field, data, colorSchemes);
+        case 'text-list':
+          results = buildTextListData(field, data, colorSchemes);
           break;
         default:
           throw new Error('Invalid field type: ' + field.type);
