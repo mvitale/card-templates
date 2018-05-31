@@ -368,7 +368,7 @@
             xIncr = textRenderer.textWidth(ctx, curWord);
 
             if (xIncr + lineX > data.wrapAt && !firstWord) {
-              lineX = x;
+              lineX = data.wrapToX || x;
               curY += lineHeight;
             }
 
