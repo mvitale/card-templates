@@ -313,7 +313,23 @@ var exports = (function() {
     }
     that.setKeyValChoiceKey = setKeyValChoiceKey;
 
+    function setDefinitionText(fieldName, index, value) {
+      var field = checkFieldNameValid(fieldName)
+        , data = dataForField(field.id)
+        ;
 
+      if (!data.value || !data.value.length) {
+        data.value = new Array(field.max);
+
+        for (var i = 0; i < data.value.length; i++) {
+          data.value[i] = { text: '' };
+        }
+      }
+
+      data.value[index].text = value;
+    }
+    that.setDefinitionText = setDefinitionText;
+    
     /*
      * Set a choice index for a field. This deletes the data's value attribute
      * if present.
@@ -499,7 +515,7 @@ var exports = (function() {
     }
 
     function isArrayField(type) {
-      return type === 'key-val-list';
+      return type === 'key-val-list' || type === 'definition-list';
     }
 
     /*
@@ -545,6 +561,11 @@ var exports = (function() {
             (curVal && curVal.val) || {}
           );
           mergedValue[i] = { key: mergedKey, val: mergedVal };
+        }
+      } else if (isArrayField(field.type)) {
+        mergedValue = new Array(dataValue.length);
+        for (var i = 0; i < mergedValue.length; i++) {
+          mergedValue[i] = Object.assign({}, fieldValue || {}, dataValue[i]) 
         }
       } else {
         mergedValue = Object.assign({}, fieldValue, choiceValue || {}, dataValue);
@@ -709,48 +730,6 @@ var exports = (function() {
     /*
      * Build drawing data for field type key-val-text.
      */
-    function buildKeyValTextData(field, data, colorSchemes) {
-      var keyBg = null;
-
-      if (field.keyBg) {
-        keyBg = {
-          color: data.key.bgColor,
-          height: field.keyBg.height,
-          hPad: field.keyBg.hPad,
-          y: field.keyBg.y + field.y
-        }
-      }
-
-      return [
-        buildTextDataHelper(
-          field.keyX,
-          field.y,
-          field.keyFont,
-          field.color,
-          field.prefix,
-          field.wrapAt,
-          field.textAlign,
-          null,
-          keyBg,
-          data.key.text,
-          colorSchemes
-        ),
-        buildTextDataHelper(
-          field.valX,
-          field.y,
-          field.valFont,
-          field.color,
-          field.prefix,
-          field.wrapAt,
-          field.textAlign,
-          null,
-          null,
-          data.val.text,
-          colorSchemes
-        )
-      ];
-    }
-
     /*
      * Build drawing data of type 'text'
      */
@@ -950,6 +929,22 @@ var exports = (function() {
       return results;
     }
 
+    function buildDefinitionListData(field, data, colorSchemes) {
+      return [{
+        type: 'text-list',
+        x: field.x,
+        y: field.y,
+        font: field.font,
+        color: field.color,
+        yIncr: field.yIncr,
+        wrapAt: field.wrapAt,
+        separator: field.separator,
+        values: data.filter(function(datum) { 
+          return datum.text;
+        })
+      }];
+    }
+
     /*
      * Build a list of primitive drawing data elements (of the types recognized
      * by the renderer) from the card.
@@ -1024,6 +1019,9 @@ var exports = (function() {
           break;
         case 'icon':
           results = buildIconData(field, data, colorSchemes);
+          break;
+        case 'definition-list':
+          results = buildDefinitionListData(field, data, colorSchemes);
           break;
         default:
           throw new Error('Invalid field type: ' + field.type);

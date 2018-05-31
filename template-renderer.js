@@ -235,6 +235,9 @@
         case 'image':
           drawImage(ctx, data, urlsToImages[data.url]);
           break;
+        case 'text-list':
+          drawTextList(ctx, data);
+          break;
         default:
           // TODO: Handle this case
       }
@@ -245,7 +248,39 @@
       ctx.fillRect(data.x, data.y, data.width, data.height);
     }
 
-    function drawText(ctx, data) {
+    function drawTextList(ctx, data) {
+      var curVal
+        , i
+        , offsetHeight = data.y
+        ;
+
+      for (i = 0; i < data.values.length; i++) {
+        curVal = data.values[i]; 
+        offsetHeight += drawText(ctx, {
+          text: curVal.text,
+          x: data.x,
+          y: offsetHeight,
+          lineHeight: data.lineHeight,
+          font: data.font,
+          color: data.color,
+          wrapAt: data.wrapAt
+        });
+
+        if (data.separator && i < data.values.length - 1) {
+          drawColor(ctx, {
+            color: data.separator.color,
+            x: data.separator.x,
+            y: offsetHeight + data.separator.yOffset,
+            height: data.separator.height,
+            width: data.separator.width
+          });
+        }
+
+        offsetHeight += data.yIncr;
+      }
+    }
+
+    function drawText(ctx, data, calcHeight) {
       var fontSizeLineHeightMultiplier = 1.12
         , words = null
         , width = null
@@ -347,6 +382,8 @@
           }
         }
       }
+
+      return curY - y;
     }
 
     // Get current font size in pixels from canvas context
