@@ -300,6 +300,7 @@
         , lineHeight = data.lineHeight
         , bgWidth
         , bgX
+        , tokens = tokenize(value)
         ;
 
       ctx.font = data.font;
@@ -316,7 +317,9 @@
       var lineSlices = value.split('\n');
 
       // TODO: Allow wrapping for text alignments other than default left
-      if (data.wrapAt == null) {
+      if (tokens.length > 1) {
+        drawRichText(ctx, tokens, data);
+      } else if (data.wrapAt == null) {
         if (data.textAlign != null) {
           if (data.textAlign === 'center') {
             x = x - textRenderer.textWidth(ctx, value) / 2;
@@ -384,6 +387,48 @@
       }
 
       return curY - y;
+    }
+
+    function buildFont(family, size, styles) {
+      var parts = [];
+
+      if (styles.bold) {
+        parts.push('600');
+      }
+
+      if (styles.italic) {
+        parts.push('italic');
+      }
+
+      parts.push(size + 'px');
+      parts.push("'" + family + "'");
+      console.log(parts);
+
+      return parts.join(' ');
+    }
+
+    function drawRichText(ctx, tokens, data) {
+      var x = data.x
+        , y = data.y
+        , styles = {
+            bold: false,
+            italic: false
+          }
+        , styleIndex
+        ;
+
+      tokens.forEach(function(token) {
+        if (token.type === 'TEXT') {
+          textRenderer.fillText(ctx, token.value, x, y);
+          x = x + textRenderer.textWidth(ctx, token.value);
+        } else if (token.type === 'ADD_STYLE' && !styles[token.style]) {
+          styles[token.style] = true
+          ctx.font = buildFont(data.fontFamily, data.fontSize, styles);
+        } else if (token.type === 'REMOVE_STYLE' && styles[token.style]) {
+          styles[token.style] = false;
+          ctx.font = buildFont(data.fontFamily, data.fontSize, styles);
+        }
+      });
     }
 
     // Get current font size in pixels from canvas context
@@ -483,6 +528,89 @@
       ctx.moveTo(data.startX, data.startY);
       ctx.lineTo(data.endX, data.endY);
       ctx.stroke();
+    }
+
+    var iStart = {
+          type: 'ADD_STYLE',
+          tag: '<i>',
+          style: 'italic',
+        }
+      , iEnd = {
+          type: 'REMOVE_STYLE',
+          tag: '</i>',
+          style: 'italic'
+        }
+      , bStart = {
+          type: 'ADD_STYLE',
+          tag: '<b>',
+          style: 'bold'
+        }
+      , bEnd = {
+          type: 'REMOVE_STYLE',
+          tag: '</b>',
+          style: 'bold'
+        }
+      , tags = [iStart, iEnd, bStart, bEnd]
+      ;
+
+    function tokenize(text) {
+      var tagIndex = 0 
+        , curChar
+        , curCandidate
+        , candidates = tags
+        , curStrParts = []
+        , curTagParts = []
+        , parts = []
+        ;
+
+      for (var i = 0; i < text.length; i++) {
+        curChar = text.charAt(i);
+        newCandidates = [];
+
+        for (var j = 0; j < candidates.length; j++) {
+          curCandidate = candidates[j];
+
+          if (curCandidate.tag.length > tagIndex && curCandidate.tag.charAt(tagIndex) === curChar) {
+            newCandidates.push(curCandidate);
+          }
+        }
+
+        if (newCandidates.length) {
+          tagIndex++;
+          candidates = newCandidates;
+          curTagParts.push(curChar);
+
+          if (newCandidates.length === 1 && tagIndex >= newCandidates[0].tag.length) {
+            if (curStrParts.length) {
+              parts.push({
+                value: curStrParts.join(''),
+                type: 'TEXT'
+              });
+            }
+
+            parts.push(newCandidates[0]);
+
+            curStrParts = [];
+            curTagParts = []
+          }
+        } else {
+          curStrParts = curStrParts.concat(curTagParts);
+          curStrParts.push(curChar);
+          curTagParts = [];
+          tagIndex = 0;
+          candidates = tags;
+        }
+      }
+    
+      if (curStrParts.length) {
+        parts.push({
+          value: curStrParts.join(''),
+          type: 'TEXT'
+        });
+      }
+
+      console.log(parts);
+      return parts;
     }
   }
 

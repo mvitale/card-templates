@@ -638,6 +638,7 @@ var exports = (function() {
         , fontStyle
         , bg = null
         , results = []
+        , fontOptions = {}
         ;
 
       if (
@@ -648,6 +649,9 @@ var exports = (function() {
       }
 
       if (!font) {
+        fontOptions.fontSize = data.fontSz;
+        fontOptions.fontFamily = field.fontFamily;
+
         fontSz = data.fontSz;
         fontFamily = "'" + field.fontFamily + "'";
         fontStyle = field.fontStyle;
@@ -704,16 +708,14 @@ var exports = (function() {
           field.lineHeight,
           bg,
           text,
-          colorSchemes
+          colorSchemes,
+          fontOptions
         )
       );
 
       return results;
     }
 
-    /*
-     * Build drawing data for field type key-val-text.
-     */
     /*
      * Build drawing data of type 'text'
      */
@@ -728,9 +730,12 @@ var exports = (function() {
       lineHeight,
       bg,
       text,
-      colorSchemes
+      colorSchemes,
+      fontOptions
     ) {
       var resolvedColor = resolveColor(colorSchemes, color);
+        
+      fontOptions = fontOptions || {};
 
       return {
         type: 'text',
@@ -743,7 +748,9 @@ var exports = (function() {
         wrapAt: wrapAt,
         textAlign: textAlign,
         lineHeight: lineHeight,
-        bg: bg
+        bg: bg,
+        fontFamily: fontOptions.fontFamily,
+        fontSize: fontOptions.fontSize
       };
     }
 
