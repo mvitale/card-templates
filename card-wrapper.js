@@ -91,12 +91,14 @@ var exports = (function() {
      * type <type>, false o/w.
      */
     function fieldForName(name) {
-      // TODO: check this condition
+      checkFieldNameValid(name);
+      return fieldForId(name);
+    }
+
+    function checkFieldNameValid(name) {
       if (!isFieldNameValid(name)) {
         throw new Error('invalid field name: ' + name);
       }
-
-      return fieldForId(name);
     }
 
     function isFieldNameValid(name) {
@@ -182,10 +184,14 @@ var exports = (function() {
     that.setDataAttrNotDirty = setDataAttrNotDirty;
 
     function setDataAttrHelper(fieldName, attr, value, notDirty) {
-      var field = fieldForName(fieldName)
-        , dataToModify = getDataValue(fieldName)
-        , curValue = dataToModify[attr]
-        ;
+      var dataToModify
+        , curValue
+        ; 
+
+      checkFieldNameValid(fieldName);
+      
+      dataToModify = getDataValue(fieldName);
+      curValue = dataToModify[attr];
 
       if (curValue !== value) {
         dataToModify[attr] = value;
@@ -207,10 +213,12 @@ var exports = (function() {
      * Deletes the previous data for the field.
      */
     function setUserDataRef(fieldName, key) {
-      var field = fieldForName(fieldName)
-        , data = wipeData(fieldName)
-        ;
+      var data;
 
+      checkFieldNameValid(fieldName);
+
+      data = wipeData(fieldName)
+      checkFieldNameValid(fieldName);
       data.userDataKey = key;
       setDirty(true);
     }
@@ -230,9 +238,10 @@ var exports = (function() {
      * Set an attribute on a field's user data bucket.
      */
     function setUserDataAttr(fieldName, bucket, key, value) {
-      var field = fieldForName(fieldName)
-        , userData = userDataForField(fieldName);
-        ;
+      var userData;
+
+      checkFieldNameValid(fieldName); 
+      userData = userDataForField(fieldName);
 
       if (!userData[bucket]) {
         userData[bucket] = {};
@@ -255,49 +264,8 @@ var exports = (function() {
     }
     that.getUserDataAttr = getUserDataAttr;
 
-    /*
-     * Special setters for key-val-list data
-     */
-    function setKeyValData(fieldName, keyOrVal, index, attr, value) {
-      var field = fieldForName(fieldName)
-        , data = getKeyValData(field)
-        ;
-
-      data.value[index][keyOrVal][attr] = value;
-      setDirty(true);
-    }
-    that.setKeyValData = setKeyValData;
-
-    function setKeyValChoiceKey(fieldName, keyValIndex, choiceKey) {
-      var field = fieldForName(fieldName)
-        , choices = getFieldChoicesMap(fieldName)
-        , choice = choices[choiceKey]
-        , data = getKeyValData(field)
-        , value = data.value[keyValIndex]
-        , cleanKey = choice.key ? {} : value.key
-        , cleanVal = choice.val ? {} : value.val
-        ;
-
-
-      data.value[keyValIndex] = {
-        key: cleanKey,
-        val: cleanVal
-      };
-
-      if (!data.choiceKey) {
-        data.choiceKey = new Array(field.max);
-      } else if (data.choiceKey.length < field.max) {
-        data.choiceKey = data.choiceKey.concat(
-          new Array(field.max - data.choiceKey.length)
-        );
-      }
-
-      data.choiceKey[keyValIndex] = choiceKey;
-    }
-    that.setKeyValChoiceKey = setKeyValChoiceKey;
-
     function setKeyValText(fieldName, keyOrVal, index, value) {
-      var field = checkFieldNameValid(fieldName)
+      var field = fieldForName(fieldName)
         , data = dataForField(fieldName)
         ;
 
@@ -326,10 +294,10 @@ var exports = (function() {
      * if present.
      */
     function setChoiceKey(fieldName, key) {
-      var field = fieldForName(fieldName)
-        , data = wipeData(fieldName)
-        ;
+      var data;
 
+      checkFieldNameValid(fieldName);
+      data = wipeData(fieldName);
       data.choiceKey = key;
       setDirty(true);
     }
