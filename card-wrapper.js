@@ -76,8 +76,8 @@ var exports = (function() {
     }
     that.isDirty = isDirty;
 
-    function checkFieldNameTypeValid(name, type) {
-      var field = checkFieldNameValid(name);
+    function fieldForNameAndType(name, type) {
+      var field = fieldForName(name);
 
       if (field.type !== type) {
         throw new Error('field not of required type');
@@ -90,19 +90,19 @@ var exports = (function() {
      * True if this card's template contains a field with name <name> and
      * type <type>, false o/w.
      */
-    function checkFieldNameValid(name) {
+    function fieldForName(name) {
       // TODO: check this condition
-      if (!fieldNameValid(name)) {
+      if (!isFieldNameValid(name)) {
         throw new Error('invalid field name: ' + name);
       }
 
       return fieldForId(name);
     }
 
-    function fieldNameValid(name) {
+    function isFieldNameValid(name) {
       return name in template.spec.fields;
     }
-    that.fieldNameValid = fieldNameValid;
+    that.isFieldNameValid = isFieldNameValid;
 
     function dataForFieldHelper(fieldId, key, forceNew) {
       var bucket = card[key]
@@ -124,14 +124,14 @@ var exports = (function() {
     }
 
     /*
-     * Get card.userData[fieldId], defaulting to {} if not already present
+     * Get card.userData[fieldId]
      */
     function userDataForField(fieldId) {
       return dataForFieldHelper(fieldId, 'userData', false);
     }
 
     /*
-     * Get card.data[fieldId], defaulting to {} if not already present
+     * Get card.data[fieldId]
      */
     function dataForField(fieldId) {
       return dataForFieldHelper(fieldId, 'data', false);
@@ -144,7 +144,7 @@ var exports = (function() {
      * present.
      */
     function getDataValue(fieldName) {
-      var field = checkFieldNameValid(fieldName)
+      var field = fieldForName(fieldName)
         , fieldData = dataForField(fieldName)
         , value
         ;
@@ -163,7 +163,7 @@ var exports = (function() {
     }
 
     /*
-     * Set an attribute for a field, e.g., zoomLevel for an image field.
+     * Set a data attribute for a field, e.g., zoomLevel for an image field.
      */
     function setDataAttr(fieldName, attr, value) {
       setDataAttrHelper(fieldName, attr, value, false);
@@ -172,7 +172,7 @@ var exports = (function() {
 
     /*
      * Same as setDataAttr, except this version does not cause a change in dirty
-     * state. This should be used when the caller intends to revert the card to
+     * state. This should be used when the caller may revert the card to
      * the state it was in before this method was called, e.g., in the card
      * editor when the user hovers over a font size.
      */
@@ -181,18 +181,8 @@ var exports = (function() {
     }
     that.setDataAttrNotDirty = setDataAttrNotDirty;
 
-    /*
-     * Force card to dirty state. Can be
-     * used to finalize a value set by setDataAttrNotDirty for preview
-     * purposes.
-     */
-    function forceDirty() {
-      setDirty(true);
-    }
-    that.forceDirty = forceDirty;
-
     function setDataAttrHelper(fieldName, attr, value, notDirty) {
-      var field = checkFieldNameValid(fieldName)
+      var field = fieldForName(fieldName)
         , dataToModify = getDataValue(fieldName)
         , curValue = dataToModify[attr]
         ;
@@ -205,19 +195,30 @@ var exports = (function() {
     }
 
     /*
-     * Set a field's data to refer to a user data object
+     * Force card to dirty state. Can be used to finalize a value set by setDataAttrNotDirty.
+     */
+    function forceDirty() {
+      setDirty(true);
+    }
+    that.forceDirty = forceDirty;
+
+    /*
+     * Set a field's data to refer to a user data object. 
+     * Deletes the previous data for the field.
      */
     function setUserDataRef(fieldName, key) {
-      var field = checkFieldNameValid(fieldName)
-        , data = wipeData(fieldName);
+      var field = fieldForName(fieldName)
+        , data = wipeData(fieldName)
+        ;
+
       data.userDataKey = key;
       setDirty(true);
     }
     that.setUserDataRef = setUserDataRef;
 
     /*
-     * Get the user data key to which a field's data object refers, or
-     * undefined if not present.
+     * Get the user data key to which a field's data object refers, 
+     * or undefined if not present.
      */
     function getUserDataRef(fieldName) {
       var data = dataForField(fieldName);
@@ -229,7 +230,7 @@ var exports = (function() {
      * Set an attribute on a field's user data bucket.
      */
     function setUserDataAttr(fieldName, bucket, key, value) {
-      var field = checkFieldNameValid(fieldName)
+      var field = fieldForName(fieldName)
         , userData = userDataForField(fieldName);
         ;
 
@@ -257,6 +258,44 @@ var exports = (function() {
     /*
      * Special setters for key-val-list data
      */
+    function setKeyValData(fieldName, keyOrVal, index, attr, value) {
+      var field = fieldForName(fieldName)
+        , data = getKeyValData(field)
+        ;
+
+      data.value[index][keyOrVal][attr] = value;
+      setDirty(true);
+    }
+    that.setKeyValData = setKeyValData;
+
+    function setKeyValChoiceKey(fieldName, keyValIndex, choiceKey) {
+      var field = fieldForName(fieldName)
+        , choices = getFieldChoicesMap(fieldName)
+        , choice = choices[choiceKey]
+        , data = getKeyValData(field)
+        , value = data.value[keyValIndex]
+        , cleanKey = choice.key ? {} : value.key
+        , cleanVal = choice.val ? {} : value.val
+        ;
+
+
+      data.value[keyValIndex] = {
+        key: cleanKey,
+        val: cleanVal
+      };
+
+      if (!data.choiceKey) {
+        data.choiceKey = new Array(field.max);
+      } else if (data.choiceKey.length < field.max) {
+        data.choiceKey = data.choiceKey.concat(
+          new Array(field.max - data.choiceKey.length)
+        );
+      }
+
+      data.choiceKey[keyValIndex] = choiceKey;
+    }
+    that.setKeyValChoiceKey = setKeyValChoiceKey;
+
     function setKeyValText(fieldName, keyOrVal, index, value) {
       var field = checkFieldNameValid(fieldName)
         , data = dataForField(fieldName)
@@ -287,7 +326,7 @@ var exports = (function() {
      * if present.
      */
     function setChoiceKey(fieldName, key) {
-      var field = checkFieldNameValid(fieldName)
+      var field = fieldForName(fieldName)
         , data = wipeData(fieldName)
         ;
 
@@ -322,7 +361,7 @@ var exports = (function() {
      * if it isn't set or is set to null.
      */
     function getDataAttr(fieldName, attr, defaultVal) {
-      var field = checkFieldNameValid(fieldName)
+      var field = fieldForName(fieldName)
         , value = resolvedFieldData(field)
         , attrVal = value ? value[attr] : null
         ;
@@ -383,7 +422,7 @@ var exports = (function() {
      * Get the drawing coordinates and dimensions for an 'image' field.
      */
     that.getImageLocation = function(fieldName) {
-      var field = checkFieldNameTypeValid(fieldName, 'image');
+      var field = fieldForNameAndType(fieldName, 'image');
 
       return {
         x: field.x,
@@ -582,7 +621,7 @@ var exports = (function() {
 
       if (
         field.labelFor &&
-        !Object.keys(resolvedFieldData(checkFieldNameValid(field.labelFor))).length
+        !Object.keys(resolvedFieldData(fieldForName(field.labelFor))).length
       ) {
         text = '';
       }
