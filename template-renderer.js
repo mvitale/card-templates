@@ -442,10 +442,16 @@
       ctx.strokeStyle = data.color;
       ctx.lineWidth = data.width;
 
+      if (data.lineDash) {
+        ctx.setLineDash(data.lineDash);
+      }
+
       ctx.beginPath();
       ctx.moveTo(data.startX, data.startY);
       ctx.lineTo(data.endX, data.endY);
       ctx.stroke();
+
+      ctx.setLineDash([]);
     }
   }
 

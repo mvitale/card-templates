@@ -18,7 +18,7 @@ var exports = (function() {
     dataPersistence = persistence;
   }
 
-  exports.newInstance = function(card, cb) {
+  exports.newInstance = function(card, options, cb) {
     if (!templateSupplier) {
       return cb(new Error('Template supplier not set'));
     }
@@ -28,13 +28,12 @@ var exports = (function() {
         return cb(err);
       }
 
-      return cb(null, new CardWrapper(card, template, false));
+      return cb(null, new CardWrapper(card, template, options, false));
     });
   };
 
-  function CardWrapper(card, template, dirty) {
-    var that = this;
-
+  function CardWrapper(card, template, options, dirty) {
+    var that = this
     if (!card.userData) {
       card.userData = {};
     }
@@ -873,9 +872,26 @@ var exports = (function() {
         }
       });
 
+      if (options.safeSpaceLines && template.spec.safeWidth != null && template.spec.safeHeight != null) {
+        drawingData = drawingData.concat(buildSafeSpaceLines());
+      }
+
       return drawingData;
     }
     that.buildDrawingData = buildDrawingData;
+
+    function buildLineData(field, colorSchemes) {
+      return {
+        type: 'line',
+        width: field.width,
+        startX: field.startX,
+        endX: field.endX,
+        startY: field.startY,
+        endY: field.endY,
+        color: resolveColor(colorSchemes, field.color),
+        lineDash: field.lineDash
+      };
+    }
 
     /*
      * Build drawing data for a field
@@ -929,6 +945,49 @@ var exports = (function() {
       return colorSchemes;
     }
 
+    function buildSafeSpaceLines() {
+      var xSpace = template.spec.width - template.spec.safeWidth
+        , ySpace = template.spec.height - template.spec.safeHeight
+        , startX = xSpace / 2.0
+        , endX = template.spec.width - startX
+        , startY = ySpace / 2.0
+        , endY = template.spec.height - startY
+        , lineLen = 20 // TODO: make a constant
+        , baseOpts = {
+            color: "#000",
+            width: 1,
+            lineDash: [5, 15]
+          }
+        ;
+
+      return [
+        buildLineData(Object.assign({}, baseOpts, {
+          startX: startX,
+          endX: endX,
+          startY: startY,
+          endY: startY
+        })),
+        buildLineData(Object.assign({}, baseOpts, {
+          startX: startX,
+          endX: endX,
+          startY: endY,
+          endY: endY
+        })),
+        buildLineData(Object.assign({}, baseOpts, {
+          startX: startX,
+          endX: startX,
+          startY: startY,
+          endY: endY
+        })),
+        buildLineData(Object.assign({}, baseOpts, {
+          startX: endX,
+          endX: endX,
+          startY: startY,
+          endY: endY
+        })),
+      ];
+    }
+
     function save(cb) {
       if (!dataPersistence) {
         return cb(new Error('Data persistence not set'));
@@ -949,7 +1008,7 @@ var exports = (function() {
 
     function clone() {
       var cardClone = JSON.parse(JSON.stringify(card));
-      return new CardWrapper(cardClone, template, isDirty());
+      return new CardWrapper(cardClone, template, options, isDirty());
     }
     that.clone = clone;
 
