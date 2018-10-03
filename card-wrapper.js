@@ -968,7 +968,7 @@ var exports = (function() {
       });
 
       if (options.safeSpaceLines && template.spec.safeWidth != null && template.spec.safeHeight != null) {
-        drawingData = drawingData.concat(buildSafeSpaceLines());
+        drawingData = drawingData.concat(buildSafeSpaceLines(colorSchemes));
       }
 
       return drawingData;
@@ -1040,7 +1040,7 @@ var exports = (function() {
       return colorSchemes;
     }
 
-    function buildSafeSpaceLines() {
+    function buildSafeSpaceLines(colorSchemes) {
       var xSpace = template.spec.width - template.spec.safeWidth
         , ySpace = template.spec.height - template.spec.safeHeight
         , startX = xSpace / 2.0
@@ -1049,7 +1049,7 @@ var exports = (function() {
         , endY = template.spec.height - startY
         , lineLen = 20 // TODO: make a constant
         , baseOpts = {
-            color: "#000",
+            color: template.spec.safeLineColor,
             width: 1,
             lineDash: [5, 15]
           }
@@ -1061,25 +1061,25 @@ var exports = (function() {
           endX: endX,
           startY: startY,
           endY: startY
-        })),
+        }), colorSchemes),
         buildLineData(Object.assign({}, baseOpts, {
           startX: startX,
           endX: endX,
           startY: endY,
           endY: endY
-        })),
+        }), colorSchemes),
         buildLineData(Object.assign({}, baseOpts, {
           startX: startX,
           endX: startX,
           startY: startY,
           endY: endY
-        })),
+        }), colorSchemes),
         buildLineData(Object.assign({}, baseOpts, {
           startX: endX,
           endX: endX,
           startY: startY,
           endY: endY
-        })),
+        }), colorSchemes),
       ];
     }
 
