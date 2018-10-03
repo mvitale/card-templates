@@ -139,7 +139,7 @@ var exports = (function() {
     /*
      * Get the object on which data attributes should be set.
      * If a userDataKey is set, the userData object to which it refers is returned.
-     * Otherwise, card.data[fieldName].value is returned, defaulting to {} if not already
+     * Otherwise, card.data[fieldName].value is returned, defaulting to {} or [] if not already
      * present.
      */
     function getDataValue(fieldName) {
@@ -151,8 +151,8 @@ var exports = (function() {
       if (fieldData.userDataKey) {
         value = userDataForField(fieldName)[fieldData.userDataKey];
       } else  {
-        if (!fieldData.value) {
-          fieldData.value = isArrayField(field.type) ? [] : {};
+        if (!fieldData.value) { 
+          fieldData.value = isArrayField(field.type) ? [] : {}; 
         }
 
         value = fieldData.value;
@@ -253,12 +253,8 @@ var exports = (function() {
     }
     that.getUserDataAttr = getUserDataAttr;
 
-    /*
-     * Special setters for key-val-list data
-     */
-    function setKeyValText(fieldName, keyOrVal, index, value) {
-      var field = checkFieldNameValid(fieldName)
-        , data = dataForField(fieldName)
+    function getKeyValData(field) {
+      var data = dataForField(field.id)
         ;
 
       if (!data.value || !data.value.length) {
@@ -266,21 +262,74 @@ var exports = (function() {
 
         for (var i = 0; i < data.value.length; i++) {
           data.value[i] = {
-            key: {
-              text: ''
-            },
-            val: {
-              text: ''
-            }
+            key: {},
+            val: {}
           };
         }
       }
 
-      data.value[index][keyOrVal].text = value;
+      return data;
+    }
+
+    /*
+     * Special setters for key-val-list data
+     */
+    function setKeyValData(fieldName, keyOrVal, index, attr, value) {
+      var field = checkFieldNameValid(fieldName)
+        , data = getKeyValData(field)
+        ;
+
+      data.value[index][keyOrVal][attr] = value;
       setDirty(true);
     }
-    that.setKeyValText = setKeyValText;
+    that.setKeyValData = setKeyValData;
 
+    function setKeyValChoiceKey(fieldName, keyValIndex, choiceKey) {
+      var field = checkFieldNameValid(fieldName)
+        , choices = getFieldChoicesMap(fieldName)
+        , choice = choices[choiceKey]
+        , data = getKeyValData(field)
+        , value = data.value[keyValIndex]
+        , cleanKey = choice.key ? {} : value.key
+        , cleanVal = choice.val ? {} : value.val
+        ;
+
+
+      data.value[keyValIndex] = {
+        key: cleanKey,
+        val: cleanVal
+      };
+
+      if (!data.choiceKey) {
+        data.choiceKey = new Array(field.max);
+      } else if (data.choiceKey.length < field.max) {
+        data.choiceKey = data.choiceKey.concat(
+          new Array(field.max - data.choiceKey.length)
+        );
+      }
+
+      data.choiceKey[keyValIndex] = choiceKey;
+    }
+    that.setKeyValChoiceKey = setKeyValChoiceKey;
+
+    function setTextListData(fieldName, index, value) {
+      var field = checkFieldNameValid(fieldName)
+        , data = dataForField(field.id)
+        ;
+
+      if (!data.value || !data.value.length) {
+        data.value = new Array(field.max);
+
+        for (var i = 0; i < data.value.length; i++) {
+          data.value[i] = { text: '' };
+        }
+      }
+
+      data.value[index].text = value;
+      setDirty(true);
+    }
+    that.setTextListData = setTextListData;
+    
     /*
      * Set a choice index for a field. This deletes the data's value attribute
      * if present.
@@ -348,9 +397,10 @@ var exports = (function() {
     /*
      * Get the list of default choices for a field.
      */
-    that.getFieldChoices = function(fieldId) {
+    function getFieldChoices(fieldId) {
       return templateOrCardFieldData('choices', fieldId);
     }
+    that.getFieldChoices = getFieldChoices;
 
     /*
      * Object { [choiceKey1]: choice1, ..., [choiceKeyN]: choiceN}
@@ -445,13 +495,17 @@ var exports = (function() {
      * a list of values is returned.
      */
     function resolveChoice(choiceKey, fieldChoices) {
-      var chosenValue = null;
+      var chosenValue;
 
       if (Array.isArray(choiceKey)) {
-        chosenValue = [];
+        chosenValue = choiceKey.map(function(key) {
+          var value = null;
 
-        choiceKey.forEach(function(index) {
-         chosenValue.push(fieldChoices[index]);
+          if (key != null) {
+            value = fieldChoices[key];
+          }
+
+          return value;
         });
       } else {
         chosenValue = fieldChoices[choiceKey];
@@ -461,7 +515,7 @@ var exports = (function() {
     }
 
     function isArrayField(type) {
-      return type === 'key-val-list';
+      return type === 'key-val-list' || type === 'text-list';
     }
 
     /*
@@ -473,26 +527,48 @@ var exports = (function() {
         , fieldChoices = getFieldChoicesMap(field.id)
         , dataValue = getDataValue(field.id)
         , choiceKey = getChoiceKey(field.id)
-        , chosenValue = null
+        , choiceValue = null
+        , mergedKey
+        , mergedVal
         , mergedValue
+        , curChoiceValue
         , curVal
+        , numValues
         ;
 
-      if (dataValue instanceof Array) {
-        mergedValue = [];
-
-        for (var i = 0; i < dataValue.length; i++) {
-          curVal = dataValue[i];
-          mergedValue[i] = Object.assign({}, fieldValue, curVal);
-        }
-      } else {
-        mergedValue = {};
-        Object.assign(mergedValue, fieldValue, dataValue);
+      if (choiceKey != null) {
+        choiceValue = resolveChoice(choiceKey, fieldChoices);
       }
 
-      if (choiceKey != null) {
-        chosenValue = resolveChoice(choiceKey, fieldChoices);
-        mergedValue = Object.assign({}, chosenValue, mergedValue);
+      if (field.type === 'key-val-list') {
+        choiceValue = choiceValue || [];
+        numValues = Math.max(dataValue.length, choiceValue.length);
+        mergedValue = new Array(numValues);
+
+        for (var i = 0; i < numValues; i++) {
+          curChoiceValue = i < choiceValue.length ? choiceValue[i] : {};
+          curVal = i < dataValue.length ? dataValue[i] : {};
+          mergedKey = Object.assign(
+            {}, 
+            (fieldValue && fieldValue.key) || {}, 
+            (curChoiceValue && curChoiceValue.key) || {}, 
+            (curVal && curVal.key) || {}
+          );
+          mergedVal = Object.assign(
+            {}, 
+            (fieldValue && fieldValue.val) || {}, 
+            (curChoiceValue && curChoiceValue.val) || {}, 
+            (curVal && curVal.val) || {}
+          );
+          mergedValue[i] = { key: mergedKey, val: mergedVal };
+        }
+      } else if (isArrayField(field.type)) {
+        mergedValue = new Array(dataValue.length);
+        for (var i = 0; i < mergedValue.length; i++) {
+          mergedValue[i] = Object.assign({}, fieldValue || {}, dataValue[i]) 
+        }
+      } else {
+        mergedValue = Object.assign({}, fieldValue, choiceValue || {}, dataValue);
       }
 
       return mergedValue;
@@ -550,23 +626,6 @@ var exports = (function() {
     }
 
     /*
-     * Build drawing data for field type 'line'
-     */
-    function buildLineData(field, colorSchemes) {
-      var resolvedColor = resolveColor(colorSchemes, field.color);
-
-      return {
-        type: 'line',
-        color: resolvedColor,
-        startX: field.startX,
-        startY: field.startY,
-        endX: field.endX,
-        endY: field.endY,
-        width: field.width
-      };
-    }
-
-    /*
      * Build drawing data for field type 'text'
      */
     function buildTextData(field, data, colorSchemes) {
@@ -577,6 +636,7 @@ var exports = (function() {
         , fontFamily
         , fontStyle
         , bg = null
+        , results = []
         ;
 
       if (
@@ -601,64 +661,58 @@ var exports = (function() {
         font = fontParts.join(' ');
       }
 
-      if (field.bg) {
-        bg = {
-          color: data.bgColor,
-          height: field.bg.height,
-          hPad: field.bg.hPad,
-          y: field.bg.y
+      /* 
+       * There are two versions of the bg property:
+       * 1) x and width are specified. In that case, we can just build a normal
+       * color element here.
+       * 2) x and width aren't specified; an hPad value is. In that case, the 
+       * TemplateRenderer needs to calculate the x value and width dynamically,
+       * so we pass a bg options attribute as part of the text data.
+       */
+      if (
+        field.bg && 
+        data.bgColor
+      ) {
+        if (field.bg.x) {
+          results.push(
+            buildColorData(
+              field.bg, { 
+                color: data.bgColor 
+              }, colorSchemes
+            )
+          );
+        } else {
+          bg = {
+            color: data.bgColor,
+            height: field.bg.height,
+            hPad: field.bg.hPad,
+            y: field.bg.y
+          }
         }
       }
 
-      return buildTextDataHelper(
-        field.x,
-        field.y,
-        font,
-        field.color,
-        field.prefix,
-        field.wrapAt,
-        field.textAlign,
-        field.lineHeight,
-        bg,
-        text,
-        colorSchemes
+      results.push(
+        buildTextDataHelper(
+          field.x,
+          field.y,
+          font,
+          field.color,
+          field.prefix,
+          field.wrapAt,
+          field.textAlign,
+          field.lineHeight,
+          bg,
+          text,
+          colorSchemes
+        )
       );
+
+      return results;
     }
 
     /*
      * Build drawing data for field type key-val-text.
      */
-    function buildKeyValTextData(field, data, colorSchemes) {
-      return [
-        buildTextDataHelper(
-          field.keyX,
-          field.y,
-          field.keyFont,
-          field.color,
-          field.prefix,
-          field.wrapAt,
-          field.textAlign,
-          null,
-          null, 
-          data.key.text,
-          colorSchemes
-        ),
-        buildTextDataHelper(
-          field.valX,
-          field.y,
-          field.valFont,
-          field.color,
-          field.prefix,
-          field.wrapAt,
-          field.textAlign,
-          null,
-          null,
-          data.val.text,
-          colorSchemes
-        )
-      ];
-    }
-
     /*
      * Build drawing data of type 'text'
      */
@@ -733,7 +787,7 @@ var exports = (function() {
         ;
 
       if (field.credit) {
-        results.push(buildTextData(field.credit, data.credit, colorSchemes));
+        results = buildTextData(field.credit, data.credit, colorSchemes);
       }
 
       addImageDataToResults(field, data, colorSchemes, results);
@@ -789,32 +843,56 @@ var exports = (function() {
       return results;
     }
 
+    function buildKeyOrValData(field, baseX, baseY, data, colorSchemes) {
+      var offsetField = Object.assign({}, field);
+      offsetField.x += baseX;
+      offsetField.y += baseY;
+
+      if (field.bg) {
+        offsetField.bg = Object.assign({}, field.bg);
+        offsetField.bg.x += baseX;
+        offsetField.bg.y += baseY;
+      }
+
+      return buildTextData(offsetField, data, colorSchemes);
+    }
+
     /*
      * Build drawing data for field type key-val-list
      */
     function buildKeyValListData(field, data, colorSchemes) {
       var curData = null
         , offsetField = null
-        , yOffset = 0
+        , yOffset
         , results = []
+        , baseX
+        , colIndex
         , filteredData = data.filter(function(datum) {
             return datum.key.text || datum.val.text;
           })
         ;
 
       for (var i = 0; i < filteredData.length; i++) {
+        baseX = 0;
+        colIndex = i;
+
+        if (field.x) {
+          baseX = field.x;
+        } else if (field.colXs) {
+          baseX = field.colXs[Math.floor(i / field.perCol)];
+          colIndex = i % field.perCol;
+        }
+
         // Build data for key-val element, setting the y value according
         // to the field's yIncr and y values
         curData = filteredData[i];
-
-        yOffset = i * field.yIncr + field.y;
-        offsetField = Object.assign({}, field.keyValSpec);
-        offsetField.y += yOffset;
+        yOffset = colIndex * field.yIncr + field.y;
 
         results = results.concat(
-          buildKeyValTextData(offsetField, curData, colorSchemes)
-        );
+          buildKeyOrValData(field.key, baseX, yOffset, curData.key, colorSchemes)
+        ).concat(buildKeyOrValData(field.val, baseX, yOffset, curData.val, colorSchemes));
 
+        /*
         // additionalElements (which do not require data)
         if (field.additionalElements) {
           field.additionalElements.forEach(function(elemField) {
@@ -830,9 +908,26 @@ var exports = (function() {
             }
           });
         }
+        */
       }
 
       return results;
+    }
+
+    function buildTextListData(field, data, colorSchemes) {
+      return [{
+        type: 'text-list',
+        x: field.x,
+        y: field.y,
+        font: field.font,
+        color: field.color,
+        yIncr: field.yIncr,
+        wrapAt: field.wrapAt,
+        separator: field.separator,
+        values: data.filter(function(datum) { 
+          return datum.text;
+        })
+      }];
     }
 
     /*
@@ -864,7 +959,7 @@ var exports = (function() {
         drawingData = drawingData.concat(fieldDatas);
 
         if (field.label && chosenValue.label) {
-          drawingData.push(buildTextData(
+          drawingData = drawingData.concat(buildTextData(
             field.label, 
             { text: chosenValue.label }, 
             colorSchemes
@@ -903,13 +998,10 @@ var exports = (function() {
         case 'color':
           results = [buildColorData(field, data, colorSchemes)];
           break;
-        case 'line':
-          results = [buildLineData(field, colorSchemes)];
-          break;
         case 'text':
         case 'multiline-text':
         case 'labeled-text':
-          results = [buildTextData(field, data, colorSchemes)];
+          results = buildTextData(field, data, colorSchemes);
           break;
         case 'image':
         case 'labeled-choice-image':
@@ -926,6 +1018,9 @@ var exports = (function() {
           break;
         case 'icon':
           results = buildIconData(field, data, colorSchemes);
+          break;
+        case 'text-list':
+          results = buildTextListData(field, data, colorSchemes);
           break;
         default:
           throw new Error('Invalid field type: ' + field.type);
