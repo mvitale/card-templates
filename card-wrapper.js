@@ -18,7 +18,7 @@ var exports = (function() {
     dataPersistence = persistence;
   }
 
-  exports.newInstance = function(card, options, cb) {
+  exports.newInstance = function(card, cb) {
     if (!templateSupplier) {
       return cb(new Error('Template supplier not set'));
     }
@@ -28,11 +28,11 @@ var exports = (function() {
         return cb(err);
       }
 
-      return cb(null, new CardWrapper(card, template, options, false));
+      return cb(null, new CardWrapper(card, template, false));
     });
   };
 
-  function CardWrapper(card, template, options, dirty) {
+  function CardWrapper(card, template, dirty) {
     var that = this
     if (!card.userData) {
       card.userData = {};
@@ -901,7 +901,7 @@ var exports = (function() {
                 offsetField = Object.assign({}, elemField);
                 offsetField.startY += yOffset;
                 offsetField.endY += yOffset;
-                results.push(buildLineData(offsetField, colorSchemes));
+                results.push(buildSafeSpaceLineData(offsetField, colorSchemes));
                 break;
               default:
                 throw new Error('Unsupported field type: ' + elemField.type);
@@ -967,7 +967,7 @@ var exports = (function() {
         }
       });
 
-      if (options.safeSpaceLines && template.spec.safeWidth != null && template.spec.safeHeight != null) {
+      if (template.spec.safeWidth != null && template.spec.safeHeight != null) {
         drawingData = drawingData.concat(buildSafeSpaceLines(colorSchemes));
       }
 
@@ -975,9 +975,9 @@ var exports = (function() {
     }
     that.buildDrawingData = buildDrawingData;
 
-    function buildLineData(field, colorSchemes) {
+    function buildSafeSpaceLineData(field, colorSchemes) {
       return {
-        type: 'line',
+        type: 'safe-space-line',
         width: field.width,
         startX: field.startX,
         endX: field.endX,
@@ -1056,25 +1056,25 @@ var exports = (function() {
         ;
 
       return [
-        buildLineData(Object.assign({}, baseOpts, {
+        buildSafeSpaceLineData(Object.assign({}, baseOpts, {
           startX: startX,
           endX: endX,
           startY: startY,
           endY: startY
         }), colorSchemes),
-        buildLineData(Object.assign({}, baseOpts, {
+        buildSafeSpaceLineData(Object.assign({}, baseOpts, {
           startX: startX,
           endX: endX,
           startY: endY,
           endY: endY
         }), colorSchemes),
-        buildLineData(Object.assign({}, baseOpts, {
+        buildSafeSpaceLineData(Object.assign({}, baseOpts, {
           startX: startX,
           endX: startX,
           startY: startY,
           endY: endY
         }), colorSchemes),
-        buildLineData(Object.assign({}, baseOpts, {
+        buildSafeSpaceLineData(Object.assign({}, baseOpts, {
           startX: endX,
           endX: endX,
           startY: startY,
@@ -1103,7 +1103,7 @@ var exports = (function() {
 
     function clone() {
       var cardClone = JSON.parse(JSON.stringify(card));
-      return new CardWrapper(cardClone, template, options, isDirty());
+      return new CardWrapper(cardClone, template, isDirty());
     }
     that.clone = clone;
 

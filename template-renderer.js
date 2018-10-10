@@ -184,7 +184,7 @@
      * Result:
      *   The Canvas with the Card rendered on it
      */
-    function draw(card, cb) {
+    function draw(card, options, cb) {
       var canvas
         , ctx
         , drawingData
@@ -210,7 +210,7 @@
 
         try {
           drawingData.forEach(function(data) {
-            drawField(ctx, data, urlsToImages);
+            drawField(ctx, data, urlsToImages, options);
           });
         } catch (e) {
           return cb(e);
@@ -221,13 +221,18 @@
     }
     this.draw = draw;
 
-    function drawField(ctx, data, urlsToImages) {
+    function drawField(ctx, data, urlsToImages, options) {
       switch(data.type) {
         case 'color':
           drawColor(ctx, data);
           break;
         case 'line':
           drawLine(ctx, data);
+          break;
+        case 'safe-space-line': 
+          if (options.safeSpaceLines) {
+            drawLine(ctx, data);
+          }
           break;
         case 'text':
           drawText(ctx, data);
