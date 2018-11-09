@@ -33,8 +33,7 @@ var exports = (function() {
   };
 
   function CardWrapper(card, template, dirty) {
-    var that = this;
-
+    var that = this
     if (!card.userData) {
       card.userData = {};
     }
@@ -909,7 +908,7 @@ var exports = (function() {
                 offsetField = Object.assign({}, elemField);
                 offsetField.startY += yOffset;
                 offsetField.endY += yOffset;
-                results.push(buildLineData(offsetField, colorSchemes));
+                results.push(buildSafeSpaceLineData(offsetField, colorSchemes));
                 break;
               default:
                 throw new Error('Unsupported field type: ' + elemField.type);
@@ -975,9 +974,26 @@ var exports = (function() {
         }
       });
 
+      if (template.spec.safeWidth != null && template.spec.safeHeight != null) {
+        drawingData = drawingData.concat(buildSafeSpaceLines(colorSchemes));
+      }
+
       return drawingData;
     }
     that.buildDrawingData = buildDrawingData;
+
+    function buildSafeSpaceLineData(field, colorSchemes) {
+      return {
+        type: 'safe-space-line',
+        width: field.width,
+        startX: field.startX,
+        endX: field.endX,
+        startY: field.startY,
+        endY: field.endY,
+        color: resolveColor(colorSchemes, field.color),
+        lineDash: field.lineDash
+      };
+    }
 
     /*
      * Build drawing data for a field
@@ -1029,6 +1045,49 @@ var exports = (function() {
       });
 
       return colorSchemes;
+    }
+
+    function buildSafeSpaceLines(colorSchemes) {
+      var xSpace = template.spec.width - template.spec.safeWidth
+        , ySpace = template.spec.height - template.spec.safeHeight
+        , startX = xSpace / 2.0
+        , endX = template.spec.width - startX
+        , startY = ySpace / 2.0
+        , endY = template.spec.height - startY
+        , lineLen = 20 // TODO: make a constant
+        , baseOpts = {
+            color: template.spec.safeLineColor,
+            width: 1,
+            lineDash: [5, 15]
+          }
+        ;
+
+      return [
+        buildSafeSpaceLineData(Object.assign({}, baseOpts, {
+          startX: startX,
+          endX: endX,
+          startY: startY,
+          endY: startY
+        }), colorSchemes),
+        buildSafeSpaceLineData(Object.assign({}, baseOpts, {
+          startX: startX,
+          endX: endX,
+          startY: endY,
+          endY: endY
+        }), colorSchemes),
+        buildSafeSpaceLineData(Object.assign({}, baseOpts, {
+          startX: startX,
+          endX: startX,
+          startY: startY,
+          endY: endY
+        }), colorSchemes),
+        buildSafeSpaceLineData(Object.assign({}, baseOpts, {
+          startX: endX,
+          endX: endX,
+          startY: startY,
+          endY: endY
+        }), colorSchemes),
+      ];
     }
 
     function save(cb) {
