@@ -308,6 +308,8 @@
         , tokens = tokenize(value)
         ;
 
+      console.log(tokens);
+
       ctx.font = data.font;
       ctx.fillStyle = data.color;
 
@@ -407,7 +409,6 @@
 
       parts.push(size + 'px');
       parts.push("'" + family + "'");
-      console.log(parts);
 
       return parts.join(' ');
     }
@@ -571,6 +572,7 @@
         , candidates = tags
         , curStrParts = []
         , curTagParts = []
+        , newCandidates = []
         , parts = []
         ;
 
@@ -603,6 +605,8 @@
 
             curStrParts = [];
             curTagParts = []
+            candidates = tags;
+            tagIndex = 0;
           }
         } else {
           curStrParts = curStrParts.concat(curTagParts);
@@ -620,7 +624,6 @@
         });
       }
 
-      console.log(parts);
       return parts;
     }
   }
