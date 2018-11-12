@@ -285,6 +285,7 @@
       }
     }
 
+    // TODO: break up mega method
     function drawText(ctx, data, calcHeight) {
       var fontSizeLineHeightMultiplier = 1.12
         , words = null
@@ -299,16 +300,18 @@
         , firstWord
         , remaining
         , xIncr
-        , value = data.text
+        , value
         , x = data.x
         , y = data.y
         , lineHeight = data.lineHeight
         , bgWidth
         , bgX
-        , tokens = tokenize(value)
+        , tokens = tokenize(data.text)
+        , styles = {
+            bold: false,
+            italic: false
+          }
         ;
-
-      console.log(tokens);
 
       ctx.font = data.font;
       ctx.fillStyle = data.color;
@@ -317,81 +320,87 @@
         lineHeight = fontSizePx(ctx) * fontSizeLineHeightMultiplier;
       }
 
-      if (data.prefix) {
-        value = data.prefix + value;
-      }
+      tokens.forEach(function(token) {
+        if (token.type === 'TEXT') {
+          var value = token.value
+            , lineSlices = token.value.split('\n')
+            ;
 
-      var lineSlices = value.split('\n');
-
-      // TODO: Allow wrapping for text alignments other than default left
-      if (tokens.length > 1) {
-        drawRichText(ctx, tokens, data);
-      } else if (data.wrapAt == null) {
-        if (data.textAlign != null) {
-          if (data.textAlign === 'center') {
-            x = x - textRenderer.textWidth(ctx, value) / 2;
-          } else if (data.textAlign === 'right') {
-            x = x - textRenderer.textWidth(ctx, value);
-          }
-          // left is implicit - nothing to do
-        }
-
-        if (data.bg && value.length) {
-          bgX = x;
-          bgWidth = textRenderer.textWidth(ctx, value);
-
-          if (data.bg.hPad) {
-            bgX -= data.bg.hPad;
-            bgWidth += 2 * data.bg.hPad;
-          }
-
-          drawColor(ctx, {
-            x: bgX,
-            y: data.bg.y,
-            width: bgWidth,
-            height: data.bg.height,
-            color: data.bg.color
-          });
-        }
-
-        ctx.fillStyle = data.color;
-        textRenderer.fillText(ctx, value, x, y);
-      } else {
-        remaining = value.slice(0);
-        firstWord = true;
-
-        while (remaining.length) {
-          sepIndex = remaining.search(/[\n\s]/);
-
-          if (sepIndex > 0) {
-            curWord = remaining.slice(0, sepIndex);
-            remaining = remaining.slice(sepIndex);
-          } else if (sepIndex === 0) {
-            curWord = remaining.charAt(0);
-            remaining = remaining.slice(1); // returns '' if nothing left
-          } else {
-            curWord = remaining;
-            remaining = '';
-          }
-
-          if (curWord !== '\n') {
-            xIncr = textRenderer.textWidth(ctx, curWord);
-
-            if (xIncr + lineX > data.wrapAt && !firstWord) {
-              lineX = data.wrapToX || x;
-              curY += lineHeight;
+          // TODO: Allow wrapping for text alignments other than default left
+          if (data.wrapAt == null) {
+            if (data.textAlign != null) {
+              if (data.textAlign === 'center') {
+                x = x - textRenderer.textWidth(ctx, value) / 2;
+              } else if (data.textAlign === 'right') {
+                x = x - textRenderer.textWidth(ctx, value);
+              }
+              // left is implicit - nothing to do
             }
 
-            textRenderer.fillText(ctx, curWord, lineX, curY);
-            lineX += xIncr;
-            firstWord = false;
+            if (data.bg && value.length) {
+              bgX = x;
+              bgWidth = textRenderer.textWidth(ctx, value);
+
+              if (data.bg.hPad) {
+                bgX -= data.bg.hPad;
+                bgWidth += 2 * data.bg.hPad;
+              }
+
+              drawColor(ctx, {
+                x: bgX,
+                y: data.bg.y,
+                width: bgWidth,
+                height: data.bg.height,
+                color: data.bg.color
+              });
+            }
+
+            ctx.fillStyle = data.color;
+            textRenderer.fillText(ctx, value, x, y);
           } else {
-            lineX = x;
-            curY += lineHeight;
+            remaining = value.slice(0);
             firstWord = true;
+
+            while (remaining.length) {
+              sepIndex = remaining.search(/[\n\s]/);
+
+              if (sepIndex > 0) {
+                curWord = remaining.slice(0, sepIndex);
+                remaining = remaining.slice(sepIndex);
+              } else if (sepIndex === 0) {
+                curWord = remaining.charAt(0);
+                remaining = remaining.slice(1); // returns '' if nothing left
+              } else {
+                curWord = remaining;
+                remaining = '';
+              }
+
+              if (curWord !== '\n') {
+                xIncr = textRenderer.textWidth(ctx, curWord);
+
+                if (xIncr + lineX > data.wrapAt && !firstWord) {
+                  lineX = data.wrapToX || x;
+                  curY += lineHeight;
+                }
+
+                textRenderer.fillText(ctx, curWord, lineX, curY);
+                lineX += xIncr;
+                firstWord = false;
+              } else {
+                lineX = x;
+                curY += lineHeight;
+                firstWord = true;
+              }
+            }
           }
+        } else if (token.type === 'ADD_STYLE' && !styles[token.style]) {
+          styles[token.style] = true
+          ctx.font = buildFont(data.fontFamily, data.fontSize, styles);
+        } else if (token.type === 'REMOVE_STYLE' && styles[token.style]) {
+          styles[token.style] = false;
+          ctx.font = buildFont(data.fontFamily, data.fontSize, styles);
         }
-      }
+      });
 
       return curY - y;
     }
