@@ -553,22 +553,22 @@
 
     var iStart = {
           type: 'ADD_STYLE',
-          tag: '<i>',
+          tag: '<em>',
           style: 'italic',
         }
       , iEnd = {
           type: 'REMOVE_STYLE',
-          tag: '</i>',
+          tag: '</em>',
           style: 'italic'
         }
       , bStart = {
           type: 'ADD_STYLE',
-          tag: '<b>',
+          tag: '<strong>',
           style: 'bold'
         }
       , bEnd = {
           type: 'REMOVE_STYLE',
-          tag: '</b>',
+          tag: '</strong>',
           style: 'bold'
         }
       , tags = [iStart, iEnd, bStart, bEnd]
