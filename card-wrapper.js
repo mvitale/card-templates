@@ -32,6 +32,10 @@ var exports = (function() {
     });
   };
 
+  exports.newInstanceWithTemplate = function(card, template) {
+    return new CardWrapper(card, template, false);
+  }
+
   function CardWrapper(card, template, dirty) {
     var that = this
     if (!card.userData) {
