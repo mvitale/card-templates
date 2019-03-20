@@ -89,8 +89,8 @@ var exports = (function() {
     /*
      * Returns the field specified by a name and type. Throws a TypeError if the field name is invalid or the field's type doesn't match the passed type.
      */
-    function fieldForNameAndType(name, type) {
-      var field = fieldForName(name);
+    function fieldForIdAndType(name, type) {
+      var field = fieldForId(name);
 
       if (field.type !== type) {
         throw new TypeError('field not of required type');
@@ -100,23 +100,21 @@ var exports = (function() {
     }
 
     /*
-     * Returns the field with a given name. Throws a TypeError if there is no field with such a name.
+     * Returns the field with a given id. Throws a TypeError if there is no field with such an id.
      */
-    function fieldForName(name) {
-      if (!isFieldNameValid(name)) {
-        throw new TypeError('invalid field name: ' + name);
+    function fieldForId(id) {
+      if (!isFieldIdValid(id)) {
+        throw new TypeError('invalid field id: ' + id);
       }
 
       var field = template.spec.fields[id];
       return Object.assign({ id: id } , field);
-
-      return fieldForName(name);
     }
 
-    function isFieldNameValid(name) {
-      return name in template.spec.fields;
+    function isFieldIdValid(id) {
+      return id in template.spec.fields;
     }
-    that.isFieldNameValid = isFieldNameValid;
+    that.isFieldIdValid = isFieldIdValid;
 
     function dataForFieldHelper(fieldId, key, forceNew) {
       var bucket = card[key]
@@ -158,7 +156,7 @@ var exports = (function() {
      * to {} or [], depending on the type of the field, if not already present.
      */
     function getDataValue(fieldName) {
-      var field = fieldForName(fieldName)
+      var field = fieldForId(fieldName)
         , fieldData = dataForField(fieldName)
         , value
         ;
@@ -205,7 +203,7 @@ var exports = (function() {
     that.forceDirty = forceDirty;
 
     function setDataAttrHelper(fieldName, attr, value, notDirty) {
-      var field = fieldForName(fieldName)
+      var field = fieldForId(fieldName)
         , dataToModify = getDataValue(fieldName)
         , curValue = dataToModify[attr]
         ;
@@ -234,7 +232,7 @@ var exports = (function() {
      * attribute in the bucket by calling getUserDataAttr.
      */
     function setUserDataRef(fieldName, key) {
-      var field = fieldForName(fieldName)
+      var field = fieldForId(fieldName)
         , data = wipeData(fieldName)
         ;
 
@@ -253,7 +251,7 @@ var exports = (function() {
      * Set an attribute on a field's user data bucket.
      */
     function setUserDataAttr(fieldName, bucket, key, value) {
-      var field = fieldForName(fieldName)
+      var field = fieldForId(fieldName)
         , userData = userDataForField(fieldName);
         ;
 
@@ -304,7 +302,7 @@ var exports = (function() {
      * Special setters for key-val-list data
      */
     function setKeyValData(fieldName, keyOrVal, index, attr, value) {
-      var field = fieldForName(fieldName)
+      var field = fieldForId(fieldName)
         , data = getKeyValData(field)
         ;
 
@@ -314,7 +312,7 @@ var exports = (function() {
     that.setKeyValData = setKeyValData;
 
     function setKeyValChoiceKey(fieldName, keyValIndex, choiceKey) {
-      var field = fieldForName(fieldName)
+      var field = fieldForId(fieldName)
         , choices = getFieldChoicesMap(fieldName)
         , choice = choices[choiceKey]
         , data = getKeyValData(field)
@@ -345,7 +343,7 @@ var exports = (function() {
      * Special data value setter for fields of type text-list
      */
     function setTextListData(fieldName, index, value) {
-      var field = fieldForName(fieldName)
+      var field = fieldForId(fieldName)
         , data = dataForField(field.id)
         ;
 
@@ -367,7 +365,7 @@ var exports = (function() {
      * if present.
      */
     function setChoiceKey(fieldName, key) {
-      var field = fieldForName(fieldName)
+      var field = fieldForId(fieldName)
         , data = wipeData(fieldName)
         ;
 
@@ -402,7 +400,7 @@ var exports = (function() {
      * if it isn't set or is set to null.
      */
     function getDataAttr(fieldName, attr, defaultVal) {
-      var field = fieldForName(fieldName)
+      var field = fieldForId(fieldName)
         , value = resolvedDataForField(field)
         , attrVal = value ? value[attr] : null
         ;
@@ -469,7 +467,7 @@ var exports = (function() {
      * Throws a TypeError if the field is not of type 'image'.
      */
     that.getImageLocation = function(fieldName) {
-      var field = fieldForNameAndType(fieldName, 'image');
+      var field = fieldForIdAndType(fieldName, 'image');
 
       return {
         x: field.x,
@@ -501,7 +499,7 @@ var exports = (function() {
       for (var i = 0; i < fieldIds.length; i++) {
         fieldId = fieldIds[i];
 
-        ret.push(fieldForName(fieldId));
+        ret.push(fieldForId(fieldId));
       }
 
       return ret;
@@ -772,7 +770,7 @@ var exports = (function() {
 
       if (
         field.labelFor &&
-        !Object.keys(resolvedDataForField(fieldForName(field.labelFor))).length
+        !Object.keys(resolvedDataForField(fieldForId(field.labelFor))).length
       ) {
         text = '';
       }
