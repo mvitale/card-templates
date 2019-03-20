@@ -18,6 +18,9 @@ var exports = (function() {
     dataPersistence = persistence;
   }
 
+  /*
+   * Main factory method. Requires a template supplier set via setTemplateSupplier.
+   */
   exports.newInstance = function(card, cb) {
     if (!templateSupplier) {
       return cb(new Error('Template supplier not set'));
@@ -32,6 +35,10 @@ var exports = (function() {
     });
   };
 
+  /*
+   * Synchronous factory -- doesn't require a template supplier, but does require that the card's template
+   * be passed as a parameter. No validation is done on the template, so ensure the caller passes the correct template.
+   */
   exports.newInstanceWithTemplate = function(card, template) {
     return new CardWrapper(card, template, false);
   }
@@ -51,7 +58,7 @@ var exports = (function() {
     that.templateName = templateName;
 
     /*
-     * Get the width of this card, as specified in its template
+     * Get the width of this card, as specified by its template
      */
     function width() {
       return template.spec.width;
@@ -59,7 +66,7 @@ var exports = (function() {
     that.width = width;
 
     /*
-     * Get the height of this card, as specified in its template.
+     * Get the height of this card, as specified by its template.
      */
     function height() {
       return template.spec.height;
@@ -79,33 +86,37 @@ var exports = (function() {
     }
     that.isDirty = isDirty;
 
-    function checkFieldNameTypeValid(name, type) {
-      var field = checkFieldNameValid(name);
+    /*
+     * Returns the field specified by a name and type. Throws a TypeError if the field name is invalid or the field's type doesn't match the passed type.
+     */
+    function fieldForNameAndType(name, type) {
+      var field = fieldForName(name);
 
       if (field.type !== type) {
-        throw new Error('field not of required type');
+        throw new TypeError('field not of required type');
       }
 
       return field;
     }
 
     /*
-     * True if this card's template contains a field with name <name> and
-     * type <type>, false o/w.
+     * Returns the field with a given name. Throws a TypeError if there is no field with such a name.
      */
-    function checkFieldNameValid(name) {
-      // TODO: check this condition
-      if (!fieldNameValid(name)) {
-        throw new Error('invalid field name: ' + name);
+    function fieldForName(name) {
+      if (!isFieldNameValid(name)) {
+        throw new TypeError('invalid field name: ' + name);
       }
 
-      return fieldForId(name);
+      var field = template.spec.fields[id];
+      return Object.assign({ id: id } , field);
+
+      return fieldForName(name);
     }
 
-    function fieldNameValid(name) {
+    function isFieldNameValid(name) {
       return name in template.spec.fields;
     }
-    that.fieldNameValid = fieldNameValid;
+    that.isFieldNameValid = isFieldNameValid;
 
     function dataForFieldHelper(fieldId, key, forceNew) {
       var bucket = card[key]
@@ -142,12 +153,12 @@ var exports = (function() {
 
     /*
      * Get the object on which data attributes should be set.
-     * If a userDataKey is set, the userData object to which it refers is returned.
-     * Otherwise, card.data[fieldName].value is returned, defaulting to {} or [] if not already
-     * present.
+     * If a userDataKey is set for the field, this is the userData object to 
+     * which it refers. Otherwise, it is card.data[fieldName].value, defaulting 
+     * to {} or [], depending on the type of the field, if not already present.
      */
     function getDataValue(fieldName) {
-      var field = checkFieldNameValid(fieldName)
+      var field = fieldForName(fieldName)
         , fieldData = dataForField(fieldName)
         , value
         ;
@@ -185,9 +196,8 @@ var exports = (function() {
     that.setDataAttrNotDirty = setDataAttrNotDirty;
 
     /*
-     * Force card to dirty state. Can be
-     * used to finalize a value set by setDataAttrNotDirty for preview
-     * purposes.
+     * Force card to dirty state. Can be used to finalize a value set by 
+     * setDataAttrNotDirty.
      */
     function forceDirty() {
       setDirty(true);
@@ -195,7 +205,7 @@ var exports = (function() {
     that.forceDirty = forceDirty;
 
     function setDataAttrHelper(fieldName, attr, value, notDirty) {
-      var field = checkFieldNameValid(fieldName)
+      var field = fieldForName(fieldName)
         , dataToModify = getDataValue(fieldName)
         , curValue = dataToModify[attr]
         ;
@@ -207,21 +217,32 @@ var exports = (function() {
       setDirty(isDirty() || !notDirty);
     }
 
-    /*
-     * Set a field's data to refer to a user data object
+    /* 
+     * NOTE: the methods that follow deal with the concept of user data buckets.
+     * These exists to persist user-supplied data (such as an uploaded image's url) on the card
+     * so that that data will not be lost if another value is chosen. A user data bucket is essentially
+     * a user-supplied 'choice' for a field: once the bucket is created, a field's value can be set to 
+     * refer to that bucket. 
+     * Example use case: 
+     * a user uploads an image for use as the value for an image field, chooses another image, 
+     * then wants to switch back to their uploaded image. After the image is first uploaded,
+     * a user data bucket for the field with name <field name> is created with key <key>, and its url 
+     * attribute is set to the image's url. This is accomplished with a single call to setUserDataAttr.
+     * After the user has chosen a different value for the field, the data stored in the bucket with key 
+     * <key> can be used again simply by calling setUserDataRef(<field name>, <key>). You can get the user
+     * data bucket a field is currently referencing by calling getUserDataRef, or the value of a specific
+     * attribute in the bucket by calling getUserDataAttr.
      */
     function setUserDataRef(fieldName, key) {
-      var field = checkFieldNameValid(fieldName)
-        , data = wipeData(fieldName);
+      var field = fieldForName(fieldName)
+        , data = wipeData(fieldName)
+        ;
+
       data.userDataKey = key;
       setDirty(true);
     }
     that.setUserDataRef = setUserDataRef;
 
-    /*
-     * Get the user data key to which a field's data object refers, or
-     * undefined if not present.
-     */
     function getUserDataRef(fieldName) {
       var data = dataForField(fieldName);
       return data.userDataKey;
@@ -232,7 +253,7 @@ var exports = (function() {
      * Set an attribute on a field's user data bucket.
      */
     function setUserDataAttr(fieldName, bucket, key, value) {
-      var field = checkFieldNameValid(fieldName)
+      var field = fieldForName(fieldName)
         , userData = userDataForField(fieldName);
         ;
 
@@ -256,7 +277,11 @@ var exports = (function() {
       return val;
     }
     that.getUserDataAttr = getUserDataAttr;
+    /* END USER DATA BUCKET METHODS */
 
+    /*
+     * Get data bucket array for field of type key-val-list.
+     */
     function getKeyValData(field) {
       var data = dataForField(field.id)
         ;
@@ -279,7 +304,7 @@ var exports = (function() {
      * Special setters for key-val-list data
      */
     function setKeyValData(fieldName, keyOrVal, index, attr, value) {
-      var field = checkFieldNameValid(fieldName)
+      var field = fieldForName(fieldName)
         , data = getKeyValData(field)
         ;
 
@@ -289,7 +314,7 @@ var exports = (function() {
     that.setKeyValData = setKeyValData;
 
     function setKeyValChoiceKey(fieldName, keyValIndex, choiceKey) {
-      var field = checkFieldNameValid(fieldName)
+      var field = fieldForName(fieldName)
         , choices = getFieldChoicesMap(fieldName)
         , choice = choices[choiceKey]
         , data = getKeyValData(field)
@@ -316,8 +341,11 @@ var exports = (function() {
     }
     that.setKeyValChoiceKey = setKeyValChoiceKey;
 
+    /*
+     * Special data value setter for fields of type text-list
+     */
     function setTextListData(fieldName, index, value) {
-      var field = checkFieldNameValid(fieldName)
+      var field = fieldForName(fieldName)
         , data = dataForField(field.id)
         ;
 
@@ -335,11 +363,11 @@ var exports = (function() {
     that.setTextListData = setTextListData;
     
     /*
-     * Set a choice index for a field. This deletes the data's value attribute
+     * Set a choice index for a field. This deletes the data bucket's value attribute
      * if present.
      */
     function setChoiceKey(fieldName, key) {
-      var field = checkFieldNameValid(fieldName)
+      var field = fieldForName(fieldName)
         , data = wipeData(fieldName)
         ;
 
@@ -349,7 +377,7 @@ var exports = (function() {
     that.setChoiceKey = setChoiceKey;
 
     /*
-     * Wipe a field's data (set to {}).
+     * Wipe a field's data bucket (set to {}).
      */
     function wipeData(fieldName) {
       var data = dataForFieldHelper(fieldName, 'data', true);
@@ -374,8 +402,8 @@ var exports = (function() {
      * if it isn't set or is set to null.
      */
     function getDataAttr(fieldName, attr, defaultVal) {
-      var field = checkFieldNameValid(fieldName)
-        , value = resolvedFieldData(field)
+      var field = fieldForName(fieldName)
+        , value = resolvedDataForField(field)
         , attrVal = value ? value[attr] : null
         ;
 
@@ -387,6 +415,12 @@ var exports = (function() {
     }
     that.getDataAttr = getDataAttr;
 
+    /* 
+     * template[bucket][fieldId] or card[bucket][fieldId] or null. 
+     * TODO: come up with a name that makes it clear this is not for retrieving
+     * a field's data bucket, but rather for something like 
+     * cardOrTemplate['choices'][fieldId].
+     */
     function templateOrCardFieldData(bucket, fieldId) {
       var result = null;
       if (template[bucket] && fieldId in template[bucket]) {
@@ -407,26 +441,24 @@ var exports = (function() {
     that.getFieldChoices = getFieldChoices;
 
     /*
-     * Object { [choiceKey1]: choice1, ..., [choiceKeyN]: choiceN}
+     * Object { [choiceKey1]: choice1, ..., [choiceKeyN]: choiceN }
      */
     function getFieldChoicesMap(fieldId) {
       var choiceList = that.getFieldChoices(fieldId)
         , result = {}
-        , curChoice
         ;
 
       if (choiceList) {
-        for (var i = 0; i < choiceList.length; i++) {
-          curChoice = choiceList[i];
+        choiceList.forEach(function(curChoice) {
           result[curChoice.choiceKey] = curChoice;
-        }
+        });
       }
 
       return result;
     }
 
     /*
-     * Get the choice tips for a field
+     * Get the choice tips for a field, or null if there aren't any.
      */
     that.getFieldChoiceTips = function(fieldId) {
       return templateOrCardFieldData('choiceTips', fieldId);
@@ -434,9 +466,10 @@ var exports = (function() {
 
     /*
      * Get the drawing coordinates and dimensions for an 'image' field.
+     * Throws a TypeError if the field is not of type 'image'.
      */
     that.getImageLocation = function(fieldName) {
-      var field = checkFieldNameTypeValid(fieldName, 'image');
+      var field = fieldForNameAndType(fieldName, 'image');
 
       return {
         x: field.x,
@@ -447,16 +480,7 @@ var exports = (function() {
     }
 
     /*
-     * Get the field specification with a given id from the template enriched
-     * with the id as an added attribute.
-     */
-    function fieldForId(id) {
-      var field = template.spec.fields[id];
-      return Object.assign({ id: id } , field);
-    }
-
-    /*
-     * Get all editable fields from the Card's template
+     * Get all editable fields from the template
      */
     function editableFields() {
       return fields().filter(function(field) {
@@ -466,7 +490,7 @@ var exports = (function() {
     that.editableFields = editableFields;
 
     /*
-     * Get all fields from the Card's template
+     * Get all fields from the template
      */
     function fields() {
       var ret = []
@@ -477,14 +501,14 @@ var exports = (function() {
       for (var i = 0; i < fieldIds.length; i++) {
         fieldId = fieldIds[i];
 
-        ret.push(fieldForId(fieldId));
+        ret.push(fieldForName(fieldId));
       }
 
       return ret;
     }
 
     /*
-     * Get all editable image fields from the Card's template
+     * Get all editable image fields from the template
      */
     function imageFields() {
       return editableFields().filter(function(field) {
@@ -494,7 +518,7 @@ var exports = (function() {
     that.imageFields = imageFields;
 
     /*
-     * Given a choiceKey and a map of fieldChoices, return the corresponding
+     * Given a choiceKey and an object of fieldChoices, return the corresponding
      * value(s). choiceKey may be a number, string or Array. In the latter case,
      * a list of values is returned.
      */
@@ -518,15 +542,17 @@ var exports = (function() {
       return chosenValue;
     }
 
+    /* Array fields take an array of data objects */
     function isArrayField(type) {
       return type === 'key-val-list' || type === 'text-list';
     }
 
     /*
-     * Get a field's data value. If a field has a choiceKey and a value,
-     * merge the value into the resolved choice(s).
+     * Get the data for a field. If the field's data bucket has a choiceKey 
+     * and an explicit value, the value is merged into into the resolved 
+     * choice(s) to create the value that is returned.
      */
-    function resolvedFieldData(field) {
+    function resolvedDataForField(field) {
       var fieldValue = field.value || {}
         , fieldChoices = getFieldChoicesMap(field.id)
         , dataValue = getDataValue(field.id)
@@ -577,29 +603,43 @@ var exports = (function() {
 
       return mergedValue;
     }
-    that.resolvedFieldData = resolvedFieldData;
+    that.resolvedDataForField = resolvedDataForField;
+
+    function resolvedDataForFields(fields) {
+      var result = {};
+
+      fields.forEach(function(field) {
+        var data = resolvedDataForField(field);
+        result[field.id] = data;
+      });
+
+      return result;
+    }
 
     /*
-     * Resolve a color scheme reference in a field's data value. Color scheme
-     * references are of the form $<color_scheme_name>.<color_key>.
+     * Resolve a color scheme reference. Color scheme references are of the form 
+     * $<color_scheme_name>.<color_key>. If the ref doesn't start with $, returns null.
      */
-    function resolveColor(colorSchemes, value) {
+    function resolveColor(colorSchemes, ref) {
       var schemeName = null
         , schemeField = null
         , parts = null
         ;
 
-      if (value.startsWith('$')) {
-        parts = value.substring(1).split('.');
+      if (ref.startsWith('$')) {
+        parts = ref.substring(1).split('.');
         schemeName = parts[0];
         schemeField = parts[1];
 
-        value = colorSchemes[schemeName][schemeField];
+        ref = colorSchemes[schemeName][schemeField];
       }
 
-      return value;
+      return ref;
     }
 
+    /*
+     * Get a field's current 'color' data attribute
+     */
     function fieldColor(field) {
       if (!field.color) {
         throw new TypeError('field missing color attribute');
@@ -609,12 +649,98 @@ var exports = (function() {
         return field.type === 'color-scheme'; 
       });
 
-      return resolveColor(buildColorSchemes(colorFields), field.color);
+      return resolveColor(resolvedDataForFields(colorFields), field.color);
     }
     that.fieldColor = fieldColor;
 
     /*
-     * Build drawing data for field type 'color'
+     * Build a list of data elements recognized by the TemplateRenderer
+     */
+    function rendererData() {
+      var colorSchemeFields = []
+        , otherFields = []
+        , colorSchemes = null
+        , drawingData = []
+        ;
+
+      fields().forEach(function(field) {
+        if (field.type === 'color-scheme') {
+          colorSchemeFields.push(field);
+        } else {
+          otherFields.push(field);
+        }
+      });
+
+      colorSchemes = resolvedDataForFields(colorSchemeFields);
+
+      otherFields.forEach(function(field) {
+        var chosenValue = resolvedDataForField(field)
+          , fieldDatas = renderingDataForField(field, chosenValue, colorSchemes)
+          ;
+
+        drawingData = drawingData.concat(fieldDatas);
+
+        if (field.label && chosenValue.label) {
+          drawingData = drawingData.concat(buildTextData(
+            field.label, 
+            { text: chosenValue.label }, 
+            colorSchemes
+          ));
+        }
+      });
+
+      if (template.spec.safeWidth != null && template.spec.safeHeight != null) {
+        drawingData = drawingData.concat(buildSafeSpaceLines(colorSchemes));
+      }
+
+      return drawingData;
+    }
+    that.rendererData = rendererData;
+
+
+    /*
+     * Build rendering data for a field
+     */
+    function renderingDataForField(field, data, colorSchemes) {
+      var results;
+
+      switch (field.type) {
+        case 'color':
+          results = [buildColorData(field, data, colorSchemes)];
+          break;
+        case 'text':
+        case 'multiline-text':
+        case 'labeled-text':
+          results = buildTextData(field, data, colorSchemes);
+          break;
+        case 'image':
+        case 'labeled-choice-image':
+          results = buildImageData(field, data, colorSchemes);
+          break;
+        case 'multi-image':
+          results = buildMultiImageData(field, data, colorSchemes);
+          break;
+        case 'key-val-list':
+          results = buildKeyValListData(field, data, colorSchemes);
+          break;
+        case 'text-icon':
+          results = buildTextIconData(field, data, colorSchemes);
+          break;
+        case 'icon':
+          results = buildIconData(field, data, colorSchemes);
+          break;
+        case 'text-list':
+          results = buildTextListData(field, data, colorSchemes);
+          break;
+        default:
+          throw new TypeError('Invalid field type: ' + field.type);
+      }
+
+      return results;
+    }
+
+    /*
+     * Build rendering data for field type 'color'
      */
     function buildColorData(field, data, colorSchemes) {
       var resolvedColor = resolveColor(colorSchemes, data.color);
@@ -630,7 +756,7 @@ var exports = (function() {
     }
 
     /*
-     * Build drawing data for field type 'text'
+     * Build rendering data for field type 'text'
      */
     function buildTextData(field, data, colorSchemes) {
       var text = data == null || data.text == null ? '' : data.text
@@ -646,7 +772,7 @@ var exports = (function() {
 
       if (
         field.labelFor &&
-        !Object.keys(resolvedFieldData(checkFieldNameValid(field.labelFor))).length
+        !Object.keys(resolvedDataForField(fieldForName(field.labelFor))).length
       ) {
         text = '';
       }
@@ -720,7 +846,7 @@ var exports = (function() {
     }
 
     /*
-     * Build drawing data of type 'text'
+     * Build rendering data of type 'text'
      */
     function buildTextDataHelper(
       x,
@@ -758,7 +884,7 @@ var exports = (function() {
     }
 
     /*
-     * Build drawing data for field type 'text-icon'
+     * Build rendering data for field type 'text-icon'
      */
     function buildTextIconData(field, data, colorSchemes) {
       var results = [];
@@ -783,6 +909,9 @@ var exports = (function() {
       return results;
     }
 
+    /*
+     * Build rendering data for field type 'icon'
+     */
     function buildIconData(field, data, colorSchemes) {
       var results = [];
       addImageDataToResults(field, data, colorSchemes, results);
@@ -807,7 +936,7 @@ var exports = (function() {
     }
 
     /*
-     * Build drawing data of type image
+     * Build rendering data for field type 'image'
      */
     function addImageDataToResults(field, data, colorSchemes, results) {
       var url = data.url ? resolveColor(colorSchemes, data.url) : null;
@@ -832,7 +961,7 @@ var exports = (function() {
     }
 
     /*
-     * Build drawing data for field type 'multi-image'
+     * Build rendering data for field type 'multi-image'
      */
     function buildMultiImageData(field, datas, colorSchemes) {
       var results = []
@@ -854,22 +983,8 @@ var exports = (function() {
       return results;
     }
 
-    function buildKeyOrValData(field, baseX, baseY, data, colorSchemes) {
-      var offsetField = Object.assign({}, field);
-      offsetField.x += baseX;
-      offsetField.y += baseY;
-
-      if (field.bg) {
-        offsetField.bg = Object.assign({}, field.bg);
-        offsetField.bg.x += baseX;
-        offsetField.bg.y += baseY;
-      }
-
-      return buildTextData(offsetField, data, colorSchemes);
-    }
-
     /*
-     * Build drawing data for field type key-val-list
+     * Build rendering data for field type 'key-val-list'
      */
     function buildKeyValListData(field, data, colorSchemes) {
       var curData = null
@@ -925,6 +1040,23 @@ var exports = (function() {
       return results;
     }
 
+    function buildKeyOrValData(field, baseX, baseY, data, colorSchemes) {
+      var offsetField = Object.assign({}, field);
+      offsetField.x += baseX;
+      offsetField.y += baseY;
+
+      if (field.bg) {
+        offsetField.bg = Object.assign({}, field.bg);
+        offsetField.bg.x += baseX;
+        offsetField.bg.y += baseY;
+      }
+
+      return buildTextData(offsetField, data, colorSchemes);
+    }
+
+    /*
+     * Build rendering data for field type 'text-list'
+     */
     function buildTextListData(field, data, colorSchemes) {
       return [{
         type: 'text-list',
@@ -942,115 +1074,8 @@ var exports = (function() {
     }
 
     /*
-     * Build a list of primitive drawing data elements (of the types recognized
-     * by the renderer) from the card.
+     * Build rendering data for safe space lines
      */
-    function buildDrawingData() {
-      var colorSchemeFields = []
-        , otherFields = []
-        , colorSchemes = null
-        , drawingData = []
-        ;
-
-      fields().forEach(function(field) {
-        if (field.type === 'color-scheme') {
-          colorSchemeFields.push(field);
-        } else {
-          otherFields.push(field);
-        }
-      });
-
-      colorSchemes = buildColorSchemes(colorSchemeFields);
-
-      otherFields.forEach(function(field) {
-        var chosenValue = resolvedFieldData(field)
-          , fieldDatas = buildDataForField(field, chosenValue, colorSchemes)
-          ;
-
-        drawingData = drawingData.concat(fieldDatas);
-
-        if (field.label && chosenValue.label) {
-          drawingData = drawingData.concat(buildTextData(
-            field.label, 
-            { text: chosenValue.label }, 
-            colorSchemes
-          ));
-        }
-      });
-
-      if (template.spec.safeWidth != null && template.spec.safeHeight != null) {
-        drawingData = drawingData.concat(buildSafeSpaceLines(colorSchemes));
-      }
-
-      return drawingData;
-    }
-    that.buildDrawingData = buildDrawingData;
-
-    function buildSafeSpaceLineData(field, colorSchemes) {
-      return {
-        type: 'safe-space-line',
-        width: field.width,
-        startX: field.startX,
-        endX: field.endX,
-        startY: field.startY,
-        endY: field.endY,
-        color: resolveColor(colorSchemes, field.color),
-        lineDash: field.lineDash
-      };
-    }
-
-    /*
-     * Build drawing data for a field
-     */
-    function buildDataForField(field, data, colorSchemes) {
-      var results;
-
-      switch (field.type) {
-        case 'color':
-          results = [buildColorData(field, data, colorSchemes)];
-          break;
-        case 'text':
-        case 'multiline-text':
-        case 'labeled-text':
-          results = buildTextData(field, data, colorSchemes);
-          break;
-        case 'image':
-        case 'labeled-choice-image':
-          results = buildImageData(field, data, colorSchemes);
-          break;
-        case 'multi-image':
-          results = buildMultiImageData(field, data, colorSchemes);
-          break;
-        case 'key-val-list':
-          results = buildKeyValListData(field, data, colorSchemes);
-          break;
-        case 'text-icon':
-          results = buildTextIconData(field, data, colorSchemes);
-          break;
-        case 'icon':
-          results = buildIconData(field, data, colorSchemes);
-          break;
-        case 'text-list':
-          results = buildTextListData(field, data, colorSchemes);
-          break;
-        default:
-          throw new Error('Invalid field type: ' + field.type);
-      }
-
-      return results;
-    }
-
-    function buildColorSchemes(colorSchemeFields) {
-      var colorSchemes = {};
-
-      colorSchemeFields.forEach(function(field) {
-        var colorScheme = resolvedFieldData(field);
-        colorSchemes[field.id] = colorScheme;
-      });
-
-      return colorSchemes;
-    }
-
     function buildSafeSpaceLines(colorSchemes) {
       var xSpace = template.spec.width - template.spec.safeWidth
         , ySpace = template.spec.height - template.spec.safeHeight
@@ -1094,9 +1119,27 @@ var exports = (function() {
       ];
     }
 
+
+    function buildSafeSpaceLineData(field, colorSchemes) {
+      return {
+        type: 'safe-space-line',
+        width: field.width,
+        startX: field.startX,
+        endX: field.endX,
+        startY: field.startY,
+        endY: field.endY,
+        color: resolveColor(colorSchemes, field.color),
+        lineDash: field.lineDash
+      };
+    }
+
+    /*
+     * Save the current state of the card via the dataPersistence object 
+     * registered with setDataPersistence.
+     */
     function save(cb) {
       if (!dataPersistence) {
-        return cb(new Error('Data persistence not set'));
+        return cb(new TypeError('Data persistence not set'));
       }
 
       dataPersistence.save(card, function(err) {

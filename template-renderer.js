@@ -193,7 +193,7 @@
         ;
 
       try {
-        drawingData = card.buildDrawingData();
+        drawingData = card.rendererData();
       } catch (e) {
         return cb(e);
       }
