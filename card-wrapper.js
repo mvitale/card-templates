@@ -152,17 +152,17 @@ var exports = (function() {
     /*
      * Get the object on which data attributes should be set.
      * If a userDataKey is set for the field, this is the userData object to 
-     * which it refers. Otherwise, it is card.data[fieldName].value, defaulting 
+     * which it refers. Otherwise, it is card.data[fieldId].value, defaulting 
      * to {} or [], depending on the type of the field, if not already present.
      */
-    function getDataValue(fieldName) {
-      var field = fieldForId(fieldName)
-        , fieldData = dataForField(fieldName)
+    function getDataValue(fieldId) {
+      var field = fieldForId(fieldId)
+        , fieldData = dataForField(fieldId)
         , value
         ;
 
       if (fieldData.userDataKey) {
-        value = userDataForField(fieldName)[fieldData.userDataKey];
+        value = userDataForField(fieldId)[fieldData.userDataKey];
       } else  {
         if (!fieldData.value) { 
           fieldData.value = isArrayField(field.type) ? [] : {}; 
@@ -177,8 +177,8 @@ var exports = (function() {
     /*
      * Set an attribute for a field, e.g., zoomLevel for an image field.
      */
-    function setDataAttr(fieldName, attr, value) {
-      setDataAttrHelper(fieldName, attr, value, false);
+    function setDataAttr(fieldId, attr, value) {
+      setDataAttrHelper(fieldId, attr, value, false);
     }
     that.setDataAttr = setDataAttr;
 
@@ -188,8 +188,8 @@ var exports = (function() {
      * the state it was in before this method was called, e.g., in the card
      * editor when the user hovers over a font size.
      */
-    function setDataAttrNotDirty(fieldName, attr, value) {
-      setDataAttrHelper(fieldName, attr, value, true);
+    function setDataAttrNotDirty(fieldId, attr, value) {
+      setDataAttrHelper(fieldId, attr, value, true);
     }
     that.setDataAttrNotDirty = setDataAttrNotDirty;
 
@@ -202,9 +202,9 @@ var exports = (function() {
     }
     that.forceDirty = forceDirty;
 
-    function setDataAttrHelper(fieldName, attr, value, notDirty) {
-      var field = fieldForId(fieldName)
-        , dataToModify = getDataValue(fieldName)
+    function setDataAttrHelper(fieldId, attr, value, notDirty) {
+      var field = fieldForId(fieldId)
+        , dataToModify = getDataValue(fieldId)
         , curValue = dataToModify[attr]
         ;
 
@@ -231,9 +231,9 @@ var exports = (function() {
      * data bucket a field is currently referencing by calling getUserDataRef, or the value of a specific
      * attribute in the bucket by calling getUserDataAttr.
      */
-    function setUserDataRef(fieldName, key) {
-      var field = fieldForId(fieldName)
-        , data = wipeData(fieldName)
+    function setUserDataRef(fieldId, key) {
+      var field = fieldForId(fieldId)
+        , data = wipeData(fieldId)
         ;
 
       data.userDataKey = key;
@@ -241,8 +241,8 @@ var exports = (function() {
     }
     that.setUserDataRef = setUserDataRef;
 
-    function getUserDataRef(fieldName) {
-      var data = dataForField(fieldName);
+    function getUserDataRef(fieldId) {
+      var data = dataForField(fieldId);
       return data.userDataKey;
     }
     that.getUserDataRef = getUserDataRef;
@@ -250,9 +250,9 @@ var exports = (function() {
     /*
      * Set an attribute on a field's user data bucket.
      */
-    function setUserDataAttr(fieldName, bucket, key, value) {
-      var field = fieldForId(fieldName)
-        , userData = userDataForField(fieldName);
+    function setUserDataAttr(fieldId, bucket, key, value) {
+      var field = fieldForId(fieldId)
+        , userData = userDataForField(fieldId);
         ;
 
       if (!userData[bucket]) {
@@ -266,8 +266,8 @@ var exports = (function() {
     /*
      * Get an attribute from a field's user data bucket.
      */
-    function getUserDataAttr(fieldName, bucket, key) {
-      var userData = userDataForField(fieldName)
+    function getUserDataAttr(fieldId, bucket, key) {
+      var userData = userDataForField(fieldId)
         , bucketVal = userData[bucket]
         , val = bucketVal ? bucketVal[key] : null
         ;
@@ -301,8 +301,8 @@ var exports = (function() {
     /*
      * Special setters for key-val-list data
      */
-    function setKeyValData(fieldName, keyOrVal, index, attr, value) {
-      var field = fieldForId(fieldName)
+    function setKeyValData(fieldId, keyOrVal, index, attr, value) {
+      var field = fieldForId(fieldId)
         , data = getKeyValData(field)
         ;
 
@@ -311,9 +311,9 @@ var exports = (function() {
     }
     that.setKeyValData = setKeyValData;
 
-    function setKeyValChoiceKey(fieldName, keyValIndex, choiceKey) {
-      var field = fieldForId(fieldName)
-        , choices = getFieldChoicesMap(fieldName)
+    function setKeyValChoiceKey(fieldId, keyValIndex, choiceKey) {
+      var field = fieldForId(fieldId)
+        , choices = getFieldChoicesMap(fieldId)
         , choice = choices[choiceKey]
         , data = getKeyValData(field)
         , value = data.value[keyValIndex]
@@ -342,8 +342,8 @@ var exports = (function() {
     /*
      * Special data value setter for fields of type text-list
      */
-    function setTextListData(fieldName, index, value) {
-      var field = fieldForId(fieldName)
+    function setTextListData(fieldId, index, value) {
+      var field = fieldForId(fieldId)
         , data = dataForField(field.id)
         ;
 
@@ -364,9 +364,9 @@ var exports = (function() {
      * Set a choice index for a field. This deletes the data bucket's value attribute
      * if present.
      */
-    function setChoiceKey(fieldName, key) {
-      var field = fieldForId(fieldName)
-        , data = wipeData(fieldName)
+    function setChoiceKey(fieldId, key) {
+      var field = fieldForId(fieldId)
+        , data = wipeData(fieldId)
         ;
 
       data.choiceKey = key;
@@ -377,8 +377,8 @@ var exports = (function() {
     /*
      * Wipe a field's data bucket (set to {}).
      */
-    function wipeData(fieldName) {
-      var data = dataForFieldHelper(fieldName, 'data', true);
+    function wipeData(fieldId) {
+      var data = dataForFieldHelper(fieldId, 'data', true);
       return data;
     }
     that.wipeData = wipeData;
@@ -386,8 +386,8 @@ var exports = (function() {
     /*
      * Get choiceKey for a field (if present)
      */
-    function getChoiceKey(fieldName, defaultVal) {
-      var data = dataForField(fieldName)
+    function getChoiceKey(fieldId, defaultVal) {
+      var data = dataForField(fieldId)
         , choiceKey = data.choiceKey
         ;
 
@@ -399,8 +399,8 @@ var exports = (function() {
      * Get the value of a data attribute for a field, or <defaultVal>
      * if it isn't set or is set to null.
      */
-    function getDataAttr(fieldName, attr, defaultVal) {
-      var field = fieldForId(fieldName)
+    function getDataAttr(fieldId, attr, defaultVal) {
+      var field = fieldForId(fieldId)
         , value = resolvedDataForField(field)
         , attrVal = value ? value[attr] : null
         ;
@@ -466,8 +466,8 @@ var exports = (function() {
      * Get the drawing coordinates and dimensions for an 'image' field.
      * Throws a TypeError if the field is not of type 'image'.
      */
-    that.getImageLocation = function(fieldName) {
-      var field = fieldForIdAndType(fieldName, 'image');
+    that.getImageLocation = function(fieldId) {
+      var field = fieldForIdAndType(fieldId, 'image');
 
       return {
         x: field.x,
