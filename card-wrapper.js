@@ -215,7 +215,6 @@ var exports = (function() {
     }
 
     function isBlank(str) {
-      console.log('check blank', str);
       return str == null || str == '';
     }
 
