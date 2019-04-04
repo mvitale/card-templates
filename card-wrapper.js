@@ -208,11 +208,14 @@ var exports = (function() {
         , curValue = dataToModify[attr]
         ;
 
-      if (curValue !== value) {
+      if (curValue !== value && !(isBlank(curValue) && isBlank(value))) {
         dataToModify[attr] = value;
+        setDirty(isDirty() || !notDirty);
       }
+    }
 
-      setDirty(isDirty() || !notDirty);
+    function isBlank(str) {
+      return str == null || str == '';
     }
 
     /* 
